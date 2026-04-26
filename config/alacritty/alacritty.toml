@@ -1,0 +1,28 @@
+terminal.shell = "nu"
+
+[general]
+import = ["./theme"]
+
+# [window]
+# opacity = 0.8
+
+[font]
+size = 9.0
+
+[font.bold]
+# family = "Monofur Nerd Font"
+family = "JetBrainsMono NF"
+
+[font.italic]
+# family = "Monofur Nerd Font"
+family = "JetBrainsMono NF"
+
+[font.normal]
+# family = "Monofur Nerd Font"
+family = "JetBrainsMono NF"
+
+# [mouse]
+# hide_when_typing = true
+
+[keyboard]
+bindings = [ { key = "Enter", mods = "Alt", action = "CreateNewWindow" } ]

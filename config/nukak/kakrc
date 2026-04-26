@@ -1,0 +1,166 @@
+decl -hidden str-list sh_args 
+
+def -docstring 'Open menu with files in the specified directory to edit' -override -params 1  find-file %{
+    set current sh_args %arg[1]
+    prompt -menu -shell-script-candidates %{
+        $env.kak_opt_sh_args
+        | path expand
+        | ls -a $in
+        | where type == file
+        | get name
+        | str join (char newline)
+    } 'edit ' %{ edit -existing %val{text} }
+}
+
+def apply-syntax-hl %{ set buffer filetype %sh{
+    let bufname = $env.kak_bufname
+
+    [
+        { pat: '(kakrc|.*\.kak)' filetype: kak }
+        { pat: '.*\.nu' filetype: nu }
+    ]
+    | where $bufname =~ $it.pat
+    | get filetype
+    | first
+} }
+
+def -docstring 'Set filetype for the current buffer' -params 1 lang %{ set buffer filetype %arg[1] }
+
+def -docstring 'Edit a file with all hooks disabled' -params 1 edit-no-hooks %{ eval -no-hooks %{ edit %arg[1] } }
+
+def -docstring 'Set named theme from "colors" directory' -override -params 1 -shell-script-candidates %{
+    [ $env.kak_runtime colors ]
+    | ls $in
+    | get name
+    | path parse
+    | get stem
+    | str join (char newline)
+} theme %{
+    source "%val{runtime}/colors/%arg{1}.kak"
+}
+
+decl -docstring 'Characters inserted at the beginning of a commented line' str comment_line '#'
+
+def -docstring 'Comment the line under the cursor(s)' comment-line %{ eval -save-regs '/' -draft %{
+    # select lines
+    exec <a-s>gi<a-l>
+    # keep non-empty
+    try %{ exec <a-K>\A\s*\z<ret> }
+    set-register / "\A\Q%opt{comment_line}\E\h?"
+    try %{ # comment
+        exec "<a-K><ret>i%opt{comment_line} "
+    } catch %{ # uncomment
+        exec s<ret>d
+    }
+} }
+def -docstring 'Paste text from arg' -params 1 paste %{ eval -save-regs dquote %{ 
+    set-register dquote %arg[1]
+    exec p 
+} }
+
+def copy-sys-clipboard  %{ eval %sh{
+    wl-copy -- $env.kak_selection e> /dev/null
+    'echo -markup {Information}Yanked selection to system clipboard;'
+} }
+
+def paste-sys-clipboard -override -params 1 %{ eval -save-regs dquote %{
+    set-register dquote %sh{(wl-paste) e> /dev/null}
+    execute-keys %arg{1}
+} } 
+
+hook global -group auto-apply-syntax-hl BufCreate .* %{ apply-syntax-hl }
+
+hook global -group insert-color ModeChange .*:.*:insert %{
+    set-face buffer PrimaryCursor InsertCursor
+    set-face buffer PrimaryCursorEol InsertCursor
+}
+hook global -group insert-color ModeChange .*:insert:.* %{ try %{
+    unset-face buffer PrimaryCursor
+    unset-face buffer PrimaryCursorEol
+} }
+
+alias global d delete-buffer
+
+add-highlighter -override global/ number-lines -relative -hlcursor -separator ' '
+add-highlighter -override global/ show-matching
+
+set global ui_options terminal_assistant=cat terminal_synchronized=true
+set global tabstop 4
+set global scrolloff 5,0
+set global autocomplete prompt
+set global autoinfo 'command|onkey'
+set global autoreload true
+
+map -docstring 'Comment line ' global normal '#' ':comment-line<ret>'
+
+map -docstring 'Yank into system Clipboard'                 global user y ':copy-sys-clipboard<ret>'
+map -docstring 'Past from system clpboard after selection'  global user p '\\:paste-sys-clipboard p<ret>'
+map -docstring 'Past from system clpboard before selection' global user P '\\:paste-sys-clipboard P<ret>'
+
+map -docstring 'Expand tab behaviour' global insert <tab> '<tab><a-;>:exec -draft h@<ret>'
+map -docstring 'Save document'        global user   w     ':w<ret>'
+map -docstring 'Evaluate selection'   global user   ';'   ':eval "%val{selection}"<ret>'
+
+# readline bindings
+map global insert <c-w> '<a-;>b<a-;>"_d'
+map global insert <c-h> <backspace>
+map global insert <c-b> '<left>'
+map global insert <c-f> '<right>'
+map global insert <c-a> '<a-;>gi'
+map global insert <c-e> '<a-;>gl<a-;>l'
+map global insert <a-,> '<a-;><'
+map global insert <a-.> '<a-;>>'
+map global insert <c-d> '<a-;>;<a-;>"_d'
+
+map -docstring 'Select line and trim' global normal X       'x_'
+map -docstring 'Repeat key-command'   global normal .       '<a-.>'
+map -docstring 'Repeat last insert'   global normal <a-.>   '.'
+
+# save selections before jumping somewhere:
+map global normal / <c-s>/
+map global normal ? <c-s>?
+map global normal <a-/> <c-s><a-/>
+map global normal <a-?> <c-s><a-?>
+map global normal * <c-s>*
+
+map -docstring 'Goto next buffer'         global goto N '<esc>:bn<ret>'
+map -docstring 'Goto previous buffer'     global goto P '<esc>:bp<ret>'
+map -docstring 'Goto next grep match'     global goto n '<esc>:grep-next-match<ret>'
+map -docstring 'Goto previous grep match' global goto p '<esc>:grep-previous-match<ret>'
+
+map -docstring 'Save'                     global user w ':w<ret>'
+map -docstring 'Repeate last command'     global user . ':<ret>'
+map -docstring 'Edit buffer'              global user b ':buffer '
+
+map -docstring 'Move selection up'    global normal <c-a-k> ':eval -save-regs dquote %{exec dkP}<ret>'
+map -docstring 'Move selection down'  global normal <c-a-j> ':eval -save-regs dquote %{exec djP}<ret>'
+map -docstring 'Move selection left'  global normal <c-a-h> ':eval -save-regs dquote %{exec dhP}<ret>'
+map -docstring 'Move selection right' global normal <c-a-l> ':eval -save-regs dquote %{exec dlP}<ret>'
+
+source "%val{runtime}/theme"
+
+eval %sh{
+    # alt + <anyaction> to escape insert mode
+    [
+        h j k l H J K L
+        o I O A
+        t T f F g G ']' '['
+        b w e B W E
+        x X
+        c C d
+        m M n N
+    ] 
+    | each { |key| $'map global insert <a-($key)> %{<esc>($key)} ; ' } 
+    | str join
+    | print
+
+
+    # source syntax definitions
+    [ $env.kak_runtime syntax ]
+    | path join
+    | ls $in
+    | get name
+    | each { print $"source '($in)' ; " }
+    | str join
+}
+

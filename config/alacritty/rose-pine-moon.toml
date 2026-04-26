@@ -1,0 +1,156 @@
+# local default          = "default"
+# local base             = "#232136"
+# local surface          = "#2a273f"
+# local overlay          = "#393552"
+# local muted            = "#6e6a86"
+# local subtle           = "#908caa"
+# local text             = "#e0def4"
+# local love             = "#eb6f92"
+# local love_10          = "#3a2841"
+# local gold             = "#f6c177"
+# local gold_10          = "#39313e"
+# local rose             = "#ea9a97"
+# local rose_10          = "#392d41"
+# local pine             = "#3e8fb0"
+# local pine_10          = "#252c44"
+# local foam             = "#9ccfd8"
+# local foam_10          = "#2e3248"
+# local iris             = "#c4a7e7"
+# local iris_10          = "#342e4a"
+# local highlight_low    = "#2a283e"
+# local highlight_med    = "#44415a"
+# local highlight_high   = "#56526e"
+
+# [colors.bright]
+# black = "#6e6a86"
+# blue = "#9ccfd8"
+# cyan = "#ea9a97"
+# green = "#3e8fb0"
+# magenta = "#c4a7e7"
+# red = "#eb6f92"
+# white = "#e0def4"
+# yellow = "#f6c177"
+
+# [colors.primary]
+# background = "#232136" # base
+# foreground = "#e0def4" # text
+# dim_foreground = "#908caa" # subtle
+
+# [colors.cursor]
+# cursor = "#ea9a97" # rose
+# text = "#232136" # base
+
+# [colors.vi_mode_cursor]
+# cursor = "#ea9a97" # rose
+# text = "#232136" # base
+
+# [colors.search.matches]
+# foreground = "CellForeground"
+# background = "#f2e9e1" # overlay
+
+# [colors.search.focused_match]
+# foreground = "CellForeground"
+# background = "#44415a" # highlight_med
+
+# [colors.hints.end]
+# background = "#2a273f" # surface
+# foreground = "#9893a5" # muted
+
+# [colors.hints.start]
+# background = "#2a273f" # surface
+# foreground = "#9893a5" # muted
+
+# [colors.line_indicator]
+# background = "#9ccfd8" # foam
+# foreground = "#2a273f" # surface
+
+# [colors.footer_bar]
+# background = "#9ccfd8" # foam
+# foreground = "#2a273f" # surface
+
+# [colors.normal]
+# black = "#f2e9e1" # overlay
+# blue = "#9ccfd8" # foam
+# cyan = "#ea9a97" # rose
+# green = "#3e8fb0" # pine
+# magenta = "#c4a7e7" # iris
+# red = "#ea9a97" # rose
+# white = "#e0def4" # text
+# yellow = "#f6c177" # gold
+
+# [colors.selection]
+# background = "#44415a" # highlight_med
+# text = "CellForeground"
+#
+#
+
+[colors.primary]
+foreground = "#e0def4"
+background = "#232136"
+dim_foreground = "#908caa"
+bright_foreground = "#e0def4"
+
+[colors.cursor]
+text = "#e0def4"
+cursor = "#56526e"
+
+[colors.vi_mode_cursor]
+text = "#e0def4"
+cursor = "#56526e"
+
+[colors.search.matches]
+foreground = "#908caa"
+background = "#393552"
+
+[colors.search.focused_match]
+foreground = "#232136"
+background = "#ea9a97"
+
+[colors.hints.start]
+foreground = "#908caa"
+background = "#2a273f"
+
+[colors.hints.end]
+foreground = "#6e6a86"
+background = "#2a273f"
+
+[colors.line_indicator]
+foreground = "None"
+background = "None"
+
+[colors.footer_bar]
+foreground = "#e0def4"
+background = "#2a273f"
+
+[colors.selection]
+text = "#e0def4"
+background = "#44415a"
+
+[colors.normal]
+black = "#393552"
+red = "#eb6f92"
+green = "#3e8fb0"
+yellow = "#f6c177"
+blue = "#9ccfd8"
+magenta = "#c4a7e7"
+cyan = "#ea9a97"
+white = "#e0def4"
+
+[colors.bright]
+black = "#6e6a86"
+red = "#eb6f92"
+green = "#3e8fb0"
+yellow = "#f6c177"
+blue = "#9ccfd8"
+magenta = "#c4a7e7"
+cyan = "#ea9a97"
+white = "#e0def4"
+
+[colors.dim]
+black = "#6e6a86"
+red = "#eb6f92"
+green = "#3e8fb0"
+yellow = "#f6c177"
+blue = "#9ccfd8"
+magenta = "#c4a7e7"
+cyan = "#ea9a97"

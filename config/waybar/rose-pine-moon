@@ -1,0 +1,30 @@
+/*
+    # local default          = "default"
+    # local base             = "#232136"
+    # local surface          = "#2a273f"
+    # local overlay          = "#393552"
+    # local muted            = "#6e6a86"
+    # local subtle           = "#908caa"
+    # local text             = "#e0def4"
+    # local love             = "#eb6f92"
+    # local love_10          = "#3a2841"
+    # local gold             = "#f6c177"
+    # local gold_10          = "#39313e"
+    # local rose             = "#ea9a97"
+    # local rose_10          = "#392d41"
+    # local pine             = "#3e8fb0"
+    # local pine_10          = "#252c44"
+    # local foam             = "#9ccfd8"
+    # local foam_10          = "#2e3248"
+    # local iris             = "#c4a7e7"
+    # local iris_10          = "#342e4a"
+    # local highlight_low    = "#2a283e"
+    # local highlight_med    = "#44415a"
+    # local highlight_high   = "#56526e"
+*/
+
+@define-color bg #232136;
+@define-color fg #e0def4;
+
+@define-color focused-bg #393552;
+@define-color focused-fg @fg;

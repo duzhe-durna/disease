@@ -1,0 +1,463 @@
+source "%val{config}/theme"
+#------------------------------------------------------------------------------
+# Plugins ---------------------------------------------------------------------
+source "%val{config}/find.kak"
+source "%val{config}/live-grep.kak"
+source "%val{config}/walk.kak"
+# source "%val{config}/splits_tmux.kak"
+# source "%val{config}/splits_sway.kak"
+source "%val{config}/cargo.kak"
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# add-highlighter -override global/paren regex (\(|\)|\{|\}|\[|\]|<|>) 1:operator
+add-highlighter -override global/ number-lines -relative -hlcursor -separator ' '
+add-highlighter -override global/ show-matching
+set global ui_options terminal_assistant=cat terminal_synchronized=true
+set global tabstop 4
+set global scrolloff 5,0
+set global autocomplete prompt
+set global autoinfo 'command|onkey'
+set global autoreload true
+#------------------------------------------------------------------------------
+# Cursor color  ---------------------------------------------------------------
+hook global -group insert-color ModeChange .*:.*:insert %{
+    set-face buffer PrimaryCursor InsertCursor
+    set-face buffer PrimaryCursorEol InsertCursor
+}
+hook global -group insert-color ModeChange .*:insert:.* %{ try %{
+    unset-face buffer PrimaryCursor
+    unset-face buffer PrimaryCursorEol
+} }
+#------------------------------------------------------------------------------
+# Filetypes -------------------------------------------------------------------
+hook global WinSetOption filetype=(yaml|json|markdown) %{
+    rmhooks window markdown-trim-indent 
+    set buffer tabstop 2
+    set buffer indentwidth 2
+}
+hook global BufOpenFile .*\.wgsl %{
+    set buffer filetype rust
+}
+hook global BufSetOption filetype=git.* %{
+    set buffer auto_save_enabled false
+}
+#------------------------------------------------------------------------------
+# Maps ------------------------------------------------------------------------
+map global insert <c-w> '<a-;>b<a-;>"_d'
+map global insert <c-h> <backspace>
+map global insert <c-b> '<left>'
+map global insert <c-f> '<right>'
+map global insert <c-a> '<a-;>gi'
+map global insert <c-e> '<a-;>gl<a-;>l'
+map global insert <a-,> '<a-;><'
+map global insert <a-.> '<a-;>>'
+map global insert <c-d> '<a-;>;<a-;>"_d'
+
+map global normal X 'x_'
+map global normal . '<a-.>'
+map global normal <a-.> '.'
+map global normal '#' ':comment-line<ret>'
+map global normal '<a-#>' ':comment-block<ret>'
+
+# save selections before jumping somewhere:
+map global normal / <c-s>/
+map global normal ? <c-s>?
+map global normal <a-/> <c-s><a-/>
+map global normal <a-?> <c-s><a-?>
+map global normal * <c-s>*
+
+map global goto N '<esc>:bn<ret>' \
+    -docstring 'Goto next buffer'
+map global goto P '<esc>:bp<ret>' \
+    -docstring 'Goto previous buffer'
+map global goto n '<esc>:grep-next-match<ret>' \
+    -docstring 'Goto next grep match'
+map global goto p '<esc>:grep-previous-match<ret>' \
+    -docstring 'Goto previous grep match'
+map global user w ":w<ret>" \
+    -docstring 'Save'
+map global user . ":<ret>" \
+    -docstring 'Repeate last command'
+
+# alt + <anyaction> to escape insert mode
+evaluate-commands %sh{
+    keys='h j k l H J K L '
+    keys+='o I O A ' 
+    keys+='t T f F g G ] [ ' 
+    keys+='b w e B W E ' 
+    keys+='x X '
+    keys+='c C d '
+    keys+='m M n N '
+    cmd=""
+    for k in $keys; do
+        cmd+="map global insert <a-$k> '<esc>$k' ; "
+    done
+    printf %s "eval %{ $cmd }"
+}
+
+# move selection (will never use for sure, but looks cool)
+map global normal <c-a-k> ':eval -save-regs dquote %{exec dkP}<ret>'
+map global normal <c-a-j> ':eval -save-regs dquote %{exec djP}<ret>'
+map global normal <c-a-h> ':eval -save-regs dquote %{exec dhP}<ret>'
+map global normal <c-a-l> ':eval -save-regs dquote %{exec dlP}<ret>'
+#------------------------------------------------------------------------------
+# themes ----------------------------------------------------------------------
+def make-theme-current-file -override -command-completion %{
+eval %sh{
+    file="$kak_opt_filetype"
+    if [ $file != "lua" ]; then
+        printf %s "fail you are not in a lua theme file!"
+    else
+        lua "$kak_config/maketheme" "$kak_buffile" "$kak_config/colors"
+    fi 
+} }
+map global user M ':make-theme-current-file<ret>' \
+    -docstring 'Generate colorscheme from current lua specs'
+
+#------------------------------------------------------------------------------
+# little helpers---------------------------------------------------------------
+
+alias global d delete-buffer
+
+def display-color \
+-docstring 'Display color of selected code' \
+-override \
+-params ..1 \
+%{ eval %sh{
+    c=${1:-$kak_selection}
+    c=${c/#\#}
+    spc=$(printf "            \n%.0s" {1..4})
+    echo -e "info -markup -title 'rgb:$c' %exp{{default,rgb:$c}$spc}"
+} }
+
+def kill-session \
+-override \
+-params 1 \
+%{ kill %arg{1} }
+compl -menu kill-session shell-script-candidates %{kak -l}
+
+def paste-sys-clipboard \
+-override \
+-params 1 \
+%{ evaluate-commands -save-regs dquote %{
+    set-register dquote %sh{wl-paste 2>/dev/null}
+    execute-keys %arg{1}
+} } 
+map global user p ':paste-sys-clipboard p<ret>' \
+    -docstring 'Past from system clpboard'
+map global user P ':paste-sys-clipboard P<ret>' \
+    -docstring 'Past from system clpboard'
+
+def copy-sys-clipboard \
+-override \
+%{ eval %sh{
+    wl-copy -- "$kak_selection" 2>/dev/null
+    printf "echo -markup {Information}Yanked selection to system clipboard;"
+} }
+map global user y ':copy-sys-clipboard<ret>'\
+-docstring 'Yank into system Clipboard'
+
+def selected-camel-into-screaming-snake \
+-override \
+%{ exec -draft -itersel 's(?<lt>=[a-z])[A-Z]<ret>i_<esc><a-i>w~' }
+
+def selected-camel-into-snake \
+-override \
+%{ exec -draft -itersel 's(?<lt>=[a-z])[A-Z]<ret>i_<esc><a-i>w`'}
+
+def cdhere \
+-override \
+-docstring 'CD to the current buffile location' \
+%{ cd %sh{ echo $(dirname "$kak_buffile") } }
+
+# Auto-save
+decl bool auto_save_enabled true
+hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
+    hook -group auto-save buffer ModeChange .*:insert:.* %{
+        eval %sh{ [ $kak_modified == true ] && printf %s "w" }
+    }
+    hook -group auto-save buffer NormalKey .* %{
+        eval %sh{ [ $kak_modified == true ] && printf %s "w" }
+    }
+}
+hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{
+    rmhooks buffer auto-save
+}
+
+# Expand-tab
+decl bool expand_tab_enabled true
+hook global -group expand-tab-manager BufSetOption expand_tab_enabled=true %{
+    hook -group expand-tab buffer InsertKey <tab> %{ exec -draft h@ }
+}
+hook global -group expand-tab-manager BufSetOption expand_tab_enabled=false %{
+    rmhooks buffer expand-tab 
+}
+
+def eval-selected \
+-override \
+%{ eval %val{selection} }
+map global user ';' ':eval-selected<ret>'
+
+def eval-selected-all-sessions \
+-override \
+%{ eval %sh{
+     cmd="$kak_selection"
+     for s in $(kak -l); do
+        echo "echo -debug '$s'"
+        echo "$cmd" | kak -p "$s"
+     done
+} }
+map global user ':' ':eval-selected-all-sessions<ret>' 
+
+def swap-selections \
+-override \
+%{ try %{ exec '<a-z>a<a-)>' } }
+map global normal <a-r> ':swap-selections<ret>'
+
+def surround-selection \
+-override \
+-params 1..2 \
+%{ eval -save-regs 'ocz' %{
+    set-register o %arg{1}
+    set-register c %arg{2}
+    exec -draft -itersel 'Z"oPz"cpz'
+} }
+
+def insert-surroundings \
+-hidden \
+-override \
+-params 1..2 \
+%{ eval -save-regs 'ocz' %{
+    set-register o %arg{1}
+    set-register c %arg{2}
+    exec -itersel '<esc>"cP"oP;l'
+} }
+
+def insert-html-tag \
+-override \
+%{ prompt 'Tag name: ' %{
+    insert-surroundings "<%val{text}>" "</%val{text}>"
+} }
+
+def surround-html-tag \
+-override \
+%{ prompt 'Tag name: ' %{
+    surround-selection "<%val{text}>" "</%val{text}>"
+} }
+
+def surround-selection-key \
+-override \
+-params ..1 \
+%{ on-key %{ eval -save-regs 'ocm' %{
+eval %sh{
+    spc=""
+    [ -n "$1" ] && spc=" "
+    o="$kak_key"
+    c="$kak_key"
+    case "$o" in
+        "<esc>") exit 0 ;;
+        "<quote>") o="'" c="'" ;;
+        "<dquote>")  o='"' c='"' ;;
+        "<lt>" | "<gt>") o="<" c=">" ;;
+        "(" | ")") o="(" c=")" ;;
+        "[" | "]") o="[" c="]" ;;
+        "{") c="}" ;;
+    esac
+    o="$o$spc"
+    c="$spc$c"
+    printf %s "set-register c %¶$c¶ ;
+               set-register o %¶$o¶ ;"
+}
+    surround-selection "%reg{o}" "%reg{c}"
+} } }
+map global normal <a-'> ':surround-selection-key<ret>'
+map global normal <a-"> ':surround-selection-key sooqa<ret>'
+
+def remove-matching-forward \
+-override \
+%{exec -save-regs '^"' 'mm;Zm;dzd'}
+map global normal <a-v> ':remove-matching-forward<ret>'
+
+def remove-matching-backward \
+-override \
+%{exec -save-regs '^"' '<a-m><a-m>;Zm;dzd'}
+map global normal <a-V> ':remove-matching-backward<ret>'
+
+def find-file \
+-docstring 'Fuzzy search for the files from specified directory'\
+-override \
+-params 1 \
+%{ eval %sh{printf %s "
+    prompt -menu  -shell-script-candidates %{
+        find $@ -type f \
+            -not -path '*/node_modules/*' \
+            -not -path '*/colors/*' \
+            -not -path '*/\.*/*' \
+            -not -path '*/target/*'
+    }  'File: ' %{
+        edit -existing %val{text} 
+    }"
+} } 
+
+map global user T ':find-file "../test*"<ret>' \
+    -docstring 'Try to fuzzy search for the files in "../tests"'
+map global user f ':find-file .<ret>' \
+    -docstring 'Fuzzy search for the files from current directory'
+map global user F ':find-file ../<ret>' \
+    -docstring 'Fuzzy search for the files from parent directory'
+
+def find-buffer \
+-docstring 'Open an exising buffer' \
+-override \
+%{ prompt -menu -buffer-completion 'Buffer: ' %{buffer %val{text}} }
+map global user b ':find-buffer<ret>' \
+    -docstring 'Serch for the active buffers'
+
+def ls \
+-docstring 'List files in the current directory' \
+-override \
+-file-completion \
+-params ..1 \
+%{ eval %sh{
+    list=$(ls -Alh $1)
+    printf "info -title '$PWD' '$list'"
+} }
+map global normal <c-l> ":ls<ret>"
+
+declare-option -docstring 'Saved output of "run-shell" command' \
+    str shell_run_output
+declare-option -docstring 'Saved exit status of "run-shell" command' \
+    int shell_run_status
+
+def sh \
+-docstring 'Runs shell command and saves output into "shell_run_output"' \
+-override \
+-shell-completion \
+-params 1.. \
+%{
+    set global shell_run_output %sh{
+        out=$({ eval "$@"; } 2>&1)
+        out+="\n\n$?"
+        echo "$out"
+    }
+
+    set global shell_run_status %sh{
+        echo "${kak_opt_shell_run_output##*'\n\n'}"
+    }
+
+    set global shell_run_output %sh{
+        echo "${kak_opt_shell_run_output%%'\n\n'*}"
+    }
+
+    eval %sh{
+        if [ $kak_opt_shell_run_status -eq 0 ]; then
+            echo "echo -markup %{{Prompt}'$*' Done..}"
+        else
+            echo "echo -markup %{{Error}'$*' Error..}"
+        fi
+
+        if [ -n "$kak_opt_shell_run_output" ]; then
+            echo "info %opt{shell_run_output}"
+        fi
+    }
+}
+
+def close-buffers \
+-docstring 'The current and the *debug* buffers will be ignored' \
+-override \
+-buffer-completion \
+-params 1 \
+%{ eval %sh{
+    cmd=
+    for b in $kak_buflist; do
+        [[ "$b" == "$kak_bufname" ]] && continue
+        [[ "$b" == "*debug*" ]] && continue
+        [[ "$b" =~ $1 ]] && cmd+="db '$b'; " 
+    done
+    printf %s "$cmd" 
+} }
+
+def set-filetype \
+-docstring 'Set a filetype for current buffer' \
+-override \
+-params 1 \
+%{ set-option buffer filetype %arg{1} }
+alias global lang set-filetype
+
+map global user 'e' ':nop %sh{ pcmanfm &> /dev/null & }<ret>' \
+    -docstring 'Open pcmanfm in cwd'
+
+#------------------------------------------------------------------------------
+# langmap ---------------------------------------------------------------------
+declare-option -hidden str current_langmap 'en'
+
+def set-langmap \
+-override \
+-params 1 \
+%{ evaluate-commands %sh{
+    DEFAULT="\`~1!2@3#4\$5%6^7&8*9(0)_=+\\|qQwWeErRtTyYuUiIoOpP[{]}aAsSdDfFgGhHjJkKlL;:'\"zZxXcCvVbBnNmM,<.>/?"
+    RU="ёЁ1!2\"3№4;5%6:7?8*9(0)_=+\\|йЙцЦуУкКеЕнНгГшШщЩзЗхХъЪфФыЫвВаАпПрРоОлЛдДжЖэЭяЯчЧсСмМиИтТьЬбБюЮ.,"
+    UA="'ʼ1!2\"3№4;5%6:7?8*9(0)_=+ґҐйЙцЦуУкКеЕнНгГшШщЩзЗхХїЇфФіІвВаАпПрРоОлЛдДжЖєЄяЯчЧсСмМиИтТьЬбБюЮ.,"
+    NEW_CURRENT="$1"
+    ALT_MAP=""
+    ACTION="map"
+    if [[ $NEW_CURRENT == "en" || $NEW_CURRENT == $kak_opt_current_langmap ]]; then
+        printf "echo -debug I MA HERE 222;"
+        NEW_CURRENT="en"
+        ACTION="unmap"
+        case $kak_opt_current_langmap in
+            "ua") ALT_MAP="$UA" ;;
+            "ru") ALT_MAP="$RU" ;;
+            *) exit ;;
+        esac
+    elif [[ $NEW_CURRENT == "ua" ]]; then
+        printf "echo -debug I MA HERE $kak_opt_current_langmap;"
+        ALT_MAP="$UA"
+    elif [[ $NEW_CURRENT == "ru" ]]; then
+        ALT_MAP="$RU"
+    else
+        printf "fail Unsupported langmap: $NEW_CURRENT"
+        exit
+    fi
+    CMD=()
+    for ((i=0; i < ${#DEFAULT}; i++)); do
+        CMD+=("${ACTION} global insert %§${DEFAULT:i:1}§ %§${ALT_MAP:i:1}§; ")
+    done
+    printf %s "${CMD[*]}; set global current_langmap $NEW_CURRENT"
+} }
+
+map global insert '<c-6>' '<a-;>:set-langmap ua<ret>'
+map global normal '<c-6>' '<a-;>:set-langmap ua<ret>'
+
+map global insert '<c-7>' '<a-;>:set-langmap ru<ret>'
+map global normal '<c-7>' '<a-;>:set-langmap ru<ret>'
+
+#------------------------------------------------------------------------------
+# Modeline --------------------------------------------------------------------
+set-option global modelinefmt \
+'%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
+{{context_info}} 
+{{mode_info}}
+- %val{client}@[%val{session}]
+- AS:%opt{auto_save_enabled}
+- ET:%opt{expand_tab_enabled}
+- (%opt{current_langmap})
+- branch:(%sh{git branch --show-current 2> /dev/null})'
+
+#------------------------------------------------------------------------------
+# LSP -------------------------------------------------------------------------
+
+# try %{
+#     eval %sh{kak-lsp}
+#     # remove-hooks global lsp-filetype-.*
+
+#     map global user l %{:enter-user-mode lsp<ret>} -docstring "LSP mode"
+#     map global insert <tab> '<a-;>:try lsp-snippets-select-next-placeholders catch %{ execute-keys -with-hooks <lt>tab> }<ret>' -docstring 'Select next snippet placeholder'
+#     map global object e '<a-semicolon>lsp-object Function Method<ret>' -docstring 'LSP function or method'
+#     map global object k '<a-semicolon>lsp-object Class Interface Struct<ret>' -docstring 'LSP class interface or struct'
+#     map global object d '<a-semicolon>lsp-diagnostic-object --include-warnings<ret>' -docstring 'LSP errors and warnings'
+#     map global object D '<a-semicolon>lsp-diagnostic-object<ret>' -docstring 'LSP errors'
+
+#     lsp-inlay-diagnostics-enable global
+#     set global lsp_hover_anchor false
+# }

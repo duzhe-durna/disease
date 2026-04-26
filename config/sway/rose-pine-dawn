@@ -1,0 +1,28 @@
+set $default        "default"
+set $base           "#faf4ed"
+set $surface        "#fffaf3"
+set $overlay        "#f2e9e1"
+set $muted          "#9893a5"
+set $subtle         "#797593"
+set $text           "#575279"
+set $love           "#b4637a"
+set $love_10        "#f6e4e0"
+set $gold           "#ea9d34"
+set $gold_10        "#fbead8"
+set $rose           "#d7827e"
+set $rose_10        "#fae8e1"
+set $pine           "#286983"
+set $pine_10        "#e5e6e2"
+set $foam           "#56949f"
+set $foam_10        "#eaeae5"
+set $iris           "#907aa9"
+set $iris_10        "#f1e8e6"
+set $highlight_low  "#f4ede8"
+set $highlight_med  "#dfdad9"
+set $highlight_high "#cecacd"
+
+
+client.focused $rose $rose $base $foam
+client.focused_inactive $overlay $overlay $text $foam
+client.unfocused $surface $surface $text $foam
+

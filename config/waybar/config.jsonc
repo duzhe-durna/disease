@@ -1,0 +1,116 @@
+{
+  "layer": "top",
+  "position": "bottom",
+  "reload_style_on_change": true,
+  "modules-left": ["sway/workspaces", "sway/mode"],
+  "modules-center": [],
+  "modules-right": ["network", "temperature", "cpu", "memory", "battery", "custom/brightness", "pulseaudio", "sway/language", "clock", "tray"],
+
+  "tray": {
+    "icon-size": 25,
+    "spacing": 10,
+  },
+
+  "clock": {
+    "format": "{:%Y-%m-%d %H:%M}",
+  },
+
+  "sway/language": {
+    "format": "{long}",
+    "on-click": "swaymsg input type:keyboard xkb_switch_layout next",
+  },
+  
+  "pulseaudio": {
+      // "scroll-step": 1, // %, can be a float
+      "format": "{volume}% {icon}   {format_source}",
+      "format-bluetooth": "{volume}% {icon} {format_source}",
+      "format-bluetooth-muted": " {icon} {format_source}",
+      "format-muted": " {format_source}",
+      "format-source": "{volume}% ",
+      "format-source-muted": "",
+      "format-icons": {
+          "headphone": "",
+          "hands-free": "",
+          "headset": "",
+          "phone": "",
+          "portable": "",
+          "car": "",
+          "default": ["", "", ""]
+      },
+      "on-click": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
+      "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+      "reverse-scrolling": true,
+      "tooltip": false,
+  },
+
+  "battery": {
+      "states": {
+          "good": 80,
+          "warning": 30,
+          "critical": 15
+      },
+      "format": "{capacity}% {icon}",
+      "format-full": "{capacity}% {icon}",
+      "format-charging": "{capacity}% ",
+      "format-plugged": "{capacity}% ",
+      "format-icons": ["", "", "", "", ""]
+  },
+
+  "cpu": {
+      "format": "{usage}% horny",
+  },
+
+  "memory": {
+      "interval": 30,
+      "format": "{used:0.1f} / {total:0.1f} G ",
+      "tooltip-format": "{percentage}%",
+  },
+
+  "custom/mullvadloc": {
+    "format": "{}",
+    "exec": "mullvad status -j | jq -r '.details.location.country'",
+    "interval": 10,
+    "tooltip": false,
+  },
+
+  "custom/brightness": {
+    "exec": "brightnessctl -m | cut -d, -f4",
+    "interval": 2,
+    "format": "{} ☀",
+    "on-scroll-up": "brightnessctl set 5%- --min-value=100",
+    "on-scroll-down": "brightnessctl set +5%",
+    "tooltip": false,
+  },
+
+  "network": {
+    "format": "",
+    "format-wifi": "({signalStrength}%)  ",
+    "format-ethernet": "󰊗 ",
+    "tooltip-format": "󰊗 ",
+    "tooltip-format-wifi": "({signalStrength}%)  ",
+    "tooltip-format-ethernet": " ",
+    "tooltip-format-disconnected": "Disconnected",
+    "tooltip": false
+  },
+
+  // "network": {
+    // "format": "{ifname}",
+    // "format-wifi": "{essid} ({signalStrength}%)  ",
+    // "format-ethernet": "{ipaddr}/{cidr} 󰊗 ",
+    // "tooltip-format": "{ifname} via {gwaddr} 󰊗 ",
+    // "tooltip-format-wifi": "{essid} ({signalStrength}%)  ",
+    // "tooltip-format-ethernet": "{ifname}  ",
+    // "tooltip-format-disconnected": "Disconnected",
+    // "tooltip": false
+  // },
+
+  "temperature": {
+    "hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon/",
+    "input-filename": "temp2_input",
+    "critical-threshold": 80,
+    "format": "{temperatureC}°C hot",
+    "format-icons": ["", "", ""],
+    "tooltip": false
+  }
+}
+

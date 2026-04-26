@@ -1,0 +1,45 @@
+@import "theme";
+
+* {
+    font-size: 13px;
+}
+
+window#waybar {
+    background-color: @bg;
+    color: @fg;
+}
+
+button {
+    border: none;
+    border-radius: 0;
+}
+
+#workspaces button {
+    padding: 0 5px;
+    background-color: @bg;
+    color: @fg;
+}
+
+#workspaces button.focused {
+    background-color: @focused-bg;
+    box-shadow: none;
+}
+
+button:hover {
+    background: none;
+}
+
+
+#cpu,
+#memory,
+#clock,
+#language,
+#pulseaudio,
+#temperature,
+#custom-mullvadloc,
+#custom-brightness,
+#custom-wl-gammarelay-temperature,
+#battery {
+    padding: 0 12px;
+}
+

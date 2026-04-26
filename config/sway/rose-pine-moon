@@ -1,0 +1,16 @@
+set $base "#232136"
+set $surface "#2a273f"
+set $overlay "#393552"
+
+set $text "#e0def4"
+set $subtle "#908caa"
+
+set $foam "#9ccfd8"
+set $pine "#3e8fb0"
+set $iris "#c4a7e7"
+set $rose "#ea9a97"
+
+client.focused $rose $rose $base $foam
+client.focused_inactive $overlay $overlay $text $foam
+client.unfocused $surface $surface $text $foam
+

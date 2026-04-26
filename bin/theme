@@ -1,0 +1,42 @@
+#!/usr/bin/env nu
+
+def main []: nothing -> nothing {
+    if not (pgrep wmenu | is-empty) { return }
+
+    # TODO: "rose-pine" "gruv-light" "kanagawa" "lotus"
+    let themes = [ "rose-pine-moon" "rose-pine-dawn" ]
+    let selected = $themes
+        | str join (char newline)
+        | menu
+
+    if not ($selected in $themes) { return }
+
+    # sway
+    let sway_path = $"($env.HOME)/.config/sway"
+    $"include '($selected)'" | save -f $"($sway_path)/theme"
+    swaymsg ( open $"($sway_path)/($selected)" )
+
+    # kak
+    $"colorscheme ($selected)" | save -f $"($env.HOME)/.config/kak/theme"
+    $"theme ($selected)" | save -f $"($env.HOME)/.config/nukak/theme"
+    kakeval $"theme ($selected)"
+
+    # alacritty
+    $"general.import = ['./($selected).toml']" | save -f $"($env.HOME)/.config/alacritty/theme"
+
+    # waybar
+    $"@import \"($selected)\";" | save -f $"($env.HOME)/.config/waybar/theme"
+
+    # wmenu
+    let wmenu_opts = (open $"($env.HOME)/.config/wmenu/($selected)" | str trim)
+    let bin_dir = '' | path join $env.HOME .local bin
+    [ [menu wmenu] [menu_run wmenu-run] ]
+    | each {
+        let bin_name = $in.0
+        let original_wmenu = $in.1
+        $"#!/usr/bin/env sh\n($original_wmenu) ($wmenu_opts) $@"
+        | save -f ('' | path join $bin_dir $bin_name)
+    }
+    | ignore
+}
+

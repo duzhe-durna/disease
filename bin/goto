@@ -1,0 +1,38 @@
+#!/usr/bin/env nu
+
+def main []: nothing -> nothing {
+    if not (pgrep wmenu | is-empty) { return }
+
+    # TODO: allow selecting files
+    let target = [
+        "Babies/"
+        "Downloads"
+        ".disease/bin"
+        ".disease/config"
+        "Apps/"
+    ]
+    | each { [ $env.HOME $in ] | path join }
+    | each { ls -a $in }
+    | flatten
+    | where type == dir
+    | get name
+    | str join (char newline)
+    | menu -l 10
+
+    if ($target | is-empty) or not ($target | path exists) { return }
+
+    cd $target
+
+    if $env.EDITOR != 'kak' {
+        $env.EDITOR
+        return
+    }
+
+    let session_name = $target
+        | path parse
+        | $"($in.parent | path basename)_($in.stem)"
+        | str replace -ar [\s\.]+ _
+        | str trim --char _
+
+    kak -C $session_name -e "daemonize-session; try %{cd src}"
+}

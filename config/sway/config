@@ -259,7 +259,6 @@ bindsym $mod+F7 exec 'busctl --user call rs.wl-gammarelay / rs.wl.gammarelay Upd
 exec 'wl-gammarelay-rs'
 
 bindsym $mod+F1 exec kakcon
-bindsym $mod+g exec goto -et
 bindsym $mod+c exec theme
 
 # autostart

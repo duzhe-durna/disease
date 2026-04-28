@@ -1,35 +1,52 @@
-decl -hidden str-list sh_args 
+def -override -params 1 -docstring %{
+    fifo <command>:  run command in a fifo buffer
+} fifo %{ eval -save-regs 1 %{
+    reg 1 %arg[1]
+    eval %sh{
+        let cmd = $env.kak_reg_1 
+        let output = mktemp --dry -t kak-fifo.XXXXXX
+        mkfifo $output
+        sh -c $"\( nu -c '($cmd)' > ($output) 2>&1 & ) > /dev/null 2>&1 < /dev/null"
+        $output
 
-def -docstring 'Open menu with files in the specified directory to edit' -override -params 1  find-file %{
-    set current sh_args %arg[1]
+        $"
+            edit! -readonly -fifo ($output) -scroll *fifo* ;
+            hook -always -once buffer BufCloseFifo .* %{ nop %sh{ rm ($output) } } ;
+        "
+    }
+} }
+
+decl -hidden str find_edit_path
+def find-edit-file -params 1 -docstring 'Will list all files in specified directory' %{ eval -save-regs a %{
+    set current find_edit_path %arg[1]
     prompt -menu -shell-script-candidates %{
-        $env.kak_opt_sh_args
-        | path expand
-        | ls -a $in
-        | where type == file
-        | get name
-        | str join (char newline)
-    } 'edit ' %{ edit -existing %val{text} }
-}
+        (^find $env.kak_opt_find_edit_path
+            -type f 
+            -not -path '*/node_modules/*' 
+            -not -path '*/colors/*' 
+            -not -path '*/target/*')
+    } 'edit ' %{
+        edit -existing %val{text}
+    }
+} } 
 
 def apply-syntax-hl %{ set buffer filetype %sh{
-    let bufname = $env.kak_bufname
-
     [
         { pat: '(kakrc|.*\.kak)' filetype: kak }
         { pat: '.*\.nu' filetype: nu }
     ]
-    | where $bufname =~ $it.pat
+    | where $env.kak_bufname =~ $it.pat
     | get filetype
     | first
 } }
 
+def ls %{ info %sh{ ls -a | sort-by { $in.type } } }
+
 def -docstring 'Set filetype for the current buffer' -params 1 lang %{ set buffer filetype %arg[1] }
 
-def -docstring 'Edit a file with all hooks disabled' -params 1 edit-no-hooks %{ eval -no-hooks %{ edit %arg[1] } }
-
-def -docstring 'Set named theme from "colors" directory' -override -params 1 -shell-script-candidates %{
+def -docstring 'Set named theme from "colors" directory' -params 1 -shell-script-candidates %{
     [ $env.kak_runtime colors ]
+    | path join
     | ls $in
     | get name
     | path parse
@@ -41,7 +58,7 @@ def -docstring 'Set named theme from "colors" directory' -override -params 1 -sh
 
 decl -docstring 'Characters inserted at the beginning of a commented line' str comment_line '#'
 
-def -docstring 'Comment the line under the cursor(s)' comment-line %{ eval -save-regs '/' -draft %{
+def comment-line %{ eval -save-regs '/' -draft %{
     # select lines
     exec <a-s>gi<a-l>
     # keep non-empty
@@ -53,22 +70,31 @@ def -docstring 'Comment the line under the cursor(s)' comment-line %{ eval -save
         exec s<ret>d
     }
 } }
-def -docstring 'Paste text from arg' -params 1 paste %{ eval -save-regs dquote %{ 
-    set-register dquote %arg[1]
-    exec p 
-} }
 
 def copy-sys-clipboard  %{ eval %sh{
     wl-copy -- $env.kak_selection e> /dev/null
     'echo -markup {Information}Yanked selection to system clipboard;'
 } }
 
-def paste-sys-clipboard -override -params 1 %{ eval -save-regs dquote %{
+def paste-sys-clipboard -params 1 %{ eval -save-regs dquote %{
     set-register dquote %sh{(wl-paste) e> /dev/null}
     execute-keys %arg{1}
 } } 
 
-hook global -group auto-apply-syntax-hl BufCreate .* %{ apply-syntax-hl }
+def enable-syntax-hl %{ hook global -group auto-apply-syntax-hl BufCreate .* %{ apply-syntax-hl } }
+
+def disable-syntax-hl %{ rmhooks global auto-apply-syntax-hl }
+
+decl -hidden bool auto_save_enabled true
+hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
+    hook -group auto-save buffer ModeChange .*:insert:.* %{ w }
+    hook -group auto-save buffer NormalKey .* %{ eval %sh{
+        if ($env.kak_modified | into bool) { 'write' }
+    } }
+}
+hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{
+    rmhooks buffer auto-save
+}
 
 hook global -group insert-color ModeChange .*:.*:insert %{
     set-face buffer PrimaryCursor InsertCursor
@@ -79,68 +105,81 @@ hook global -group insert-color ModeChange .*:insert:.* %{ try %{
     unset-face buffer PrimaryCursorEol
 } }
 
+hook global WinSetOption filetype=(yaml|json|markdown) %{
+    rmhooks window markdown-trim-indent 
+    set buffer tabstop 2
+    set buffer indentwidth 2
+}
+hook global BufOpenFile .*\.wgsl %{
+    set buffer filetype rust
+}
+hook global BufSetOption filetype=git.* %{
+    set buffer auto_save_enabled false
+}
+
 alias global d delete-buffer
 
-add-highlighter -override global/ number-lines -relative -hlcursor -separator ' '
-add-highlighter -override global/ show-matching
+add-highlighter global/ number-lines -relative -hlcursor -separator ' '
+add-highlighter global/ show-matching
 
 set global ui_options terminal_assistant=cat terminal_synchronized=true
 set global tabstop 4
-set global scrolloff 5,0
+set global scrolloff 5,20
 set global autocomplete prompt
 set global autoinfo 'command|onkey'
 set global autoreload true
 
-map -docstring 'Comment line ' global normal '#' ':comment-line<ret>'
+map global normal '#'   :comment-line<ret>
+map global normal <c-l> :ls<ret>
 
-map -docstring 'Yank into system Clipboard'                 global user y ':copy-sys-clipboard<ret>'
-map -docstring 'Past from system clpboard after selection'  global user p '\\:paste-sys-clipboard p<ret>'
-map -docstring 'Past from system clpboard before selection' global user P '\\:paste-sys-clipboard P<ret>'
+map -docstring 'List files to edit in ./**/*'               global user f   %{:find-edit-file ./<ret>}
+map -docstring 'List files to edit in ../**/*'              global user F   %{:find-edit-file ../<ret>}
+map -docstring 'Yank into system Clipboard'                 global user y   %{:copy-sys-clipboard<ret>}
+map -docstring 'Past from system clpboard after selection'  global user p   %{\\:paste-sys-clipboard p<ret>}
+map -docstring 'Past from system clpboard before selection' global user P   %{\\:paste-sys-clipboard P<ret>}
+map -docstring 'Save document'                              global user w   %{:w<ret>}
+map -docstring 'Evaluate main selection'                    global user ';' %{:eval %val{selection}<ret>}
 
-map -docstring 'Expand tab behaviour' global insert <tab> '<tab><a-;>:exec -draft h@<ret>'
-map -docstring 'Save document'        global user   w     ':w<ret>'
-map -docstring 'Evaluate selection'   global user   ';'   ':eval "%val{selection}"<ret>'
+map global insert <tab> %{<tab><a-;>:exec -draft h@<ret>}
 
 # readline bindings
-map global insert <c-w> '<a-;>b<a-;>"_d'
+map global insert <c-w> %{<a-;>b<a-;>"_d}
 map global insert <c-h> <backspace>
-map global insert <c-b> '<left>'
-map global insert <c-f> '<right>'
-map global insert <c-a> '<a-;>gi'
-map global insert <c-e> '<a-;>gl<a-;>l'
-map global insert <a-,> '<a-;><'
-map global insert <a-.> '<a-;>>'
-map global insert <c-d> '<a-;>;<a-;>"_d'
+map global insert <c-b> <left>
+map global insert <c-f> <right>
+map global insert <c-a> %{<a-;>gi}
+map global insert <c-e> %{<a-;>gl<a-;>l}
+map global insert <a-,> %{<a-;><}
+map global insert <a-.> %{<a-;>>}
+map global insert <c-d> %{<a-;>;<a-;>"_d}
 
-map -docstring 'Select line and trim' global normal X       'x_'
-map -docstring 'Repeat key-command'   global normal .       '<a-.>'
-map -docstring 'Repeat last insert'   global normal <a-.>   '.'
+map global normal X     x_
+map global normal .     <a-.>
+map global normal <a-.> .
 
 # save selections before jumping somewhere:
-map global normal / <c-s>/
-map global normal ? <c-s>?
+map global normal /     <c-s>/
+map global normal ?     <c-s>?
 map global normal <a-/> <c-s><a-/>
 map global normal <a-?> <c-s><a-?>
-map global normal * <c-s>*
+map global normal *     <c-s>*
 
-map -docstring 'Goto next buffer'         global goto N '<esc>:bn<ret>'
-map -docstring 'Goto previous buffer'     global goto P '<esc>:bp<ret>'
-map -docstring 'Goto next grep match'     global goto n '<esc>:grep-next-match<ret>'
-map -docstring 'Goto previous grep match' global goto p '<esc>:grep-previous-match<ret>'
+map -docstring 'Goto next buffer'         global goto N <esc>:bn<ret>
+map -docstring 'Goto previous buffer'     global goto P <esc>:bp<ret>
+map -docstring 'Goto next grep match'     global goto n <esc>:grep-next-match<ret>
+map -docstring 'Goto previous grep match' global goto p <esc>:grep-previous-match<ret>
 
-map -docstring 'Save'                     global user w ':w<ret>'
-map -docstring 'Repeate last command'     global user . ':<ret>'
-map -docstring 'Edit buffer'              global user b ':buffer '
+map -docstring 'Save'                     global user w :w<ret>
+map -docstring 'Repeate last command'     global user . :<ret>
+map -docstring 'Edit buffer'              global user b %{:buffer }
 
-map -docstring 'Move selection up'    global normal <c-a-k> ':eval -save-regs dquote %{exec dkP}<ret>'
-map -docstring 'Move selection down'  global normal <c-a-j> ':eval -save-regs dquote %{exec djP}<ret>'
-map -docstring 'Move selection left'  global normal <c-a-h> ':eval -save-regs dquote %{exec dhP}<ret>'
-map -docstring 'Move selection right' global normal <c-a-l> ':eval -save-regs dquote %{exec dlP}<ret>'
+map -docstring 'Move selection up'    global normal <c-a-k> %{:eval -save-regs dquote %{exec dkP}<ret>}
+map -docstring 'Move selection down'  global normal <c-a-j> %{:eval -save-regs dquote %{exec djP}<ret>}
+map -docstring 'Move selection left'  global normal <c-a-h> %{:eval -save-regs dquote %{exec dhP}<ret>}
+map -docstring 'Move selection right' global normal <c-a-l> %{:eval -save-regs dquote %{exec dlP}<ret>}
 
-source "%val{runtime}/theme"
-
+# alt + <anyaction> to escape insert mode
 eval %sh{
-    # alt + <anyaction> to escape insert mode
     [
         h j k l H J K L
         o I O A
@@ -154,7 +193,6 @@ eval %sh{
     | str join
     | print
 
-
     # source syntax definitions
     [ $env.kak_runtime syntax ]
     | path join
@@ -162,5 +200,10 @@ eval %sh{
     | get name
     | each { print $"source '($in)' ; " }
     | str join
+    | print
 }
+
+enable-syntax-hl
+source "%val{runtime}/theme"
+source "%val{runtime}/splits.kak"
 

@@ -26,7 +26,8 @@ define-command -params .. -docstring %{
             edit! -fifo ${output} ${scroll} ${name}
             hook -always -once buffer BufCloseFifo .* %{ nop %sh{ rm -r $(dirname ${output}) } }
         "
-    }}
+    }
+}
 
 complete-command fifo shell
 

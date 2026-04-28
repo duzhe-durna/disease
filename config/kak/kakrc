@@ -4,9 +4,9 @@ source "%val{config}/theme"
 source "%val{config}/find.kak"
 source "%val{config}/live-grep.kak"
 source "%val{config}/walk.kak"
+source "%val{config}/cargo.kak"
 # source "%val{config}/splits_tmux.kak"
 # source "%val{config}/splits_sway.kak"
-source "%val{config}/cargo.kak"
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 # add-highlighter -override global/paren regex (\(|\)|\{|\}|\[|\]|<|>) 1:operator

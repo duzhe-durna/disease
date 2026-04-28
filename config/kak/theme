@@ -1,1 +1,0 @@
-colorscheme rose-pine-moon

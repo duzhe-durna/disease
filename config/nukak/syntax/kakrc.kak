@@ -49,7 +49,7 @@ add-highlighter shared/kakrc/shell8 region -recurse '<'  '(^|\h)\K-?shell-script
 
 eval %sh{
     let keywords: list<string> = [
-        def eval reg set face decl rmhooks rmhl addhl
+        def eval reg set unset face decl rmhooks rmhl addhl
         add-highlighter alias arrange-buffers buffer buffer-next buffer-previous catch
         change-directory debug declare-option declare-user-mode define-command complete-command
         delete-buffer delete-buffer! echo edit edit! enter-user-mode evaluate-commands execute-keys

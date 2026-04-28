@@ -39,4 +39,3 @@ def main []: nothing -> nothing {
     }
     | ignore
 }
-

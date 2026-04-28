@@ -1,5 +1,3 @@
-$env.config.table.mode = 'compact'
-
 def setup_link_paths [src_dir: path target_dir: path]: nothing -> list<record<src: path, target: path>> {
     ls -a $src_dir
     | get name 
@@ -9,11 +7,26 @@ def setup_link_paths [src_dir: path target_dir: path]: nothing -> list<record<sr
     } } 
 }
 
+$env.config.table.mode = 'compact'
+
+const self_path = (path self | path dirname)
+cd $self_path
+
+let local_bin = [ $env.HOME .local bin ] | path join
+print $'Creating ($local_bin)'
+mkdir -v $local_bin
+
 (
-    (setup_link_paths ./home ~/) 
+       (setup_link_paths ./home ~/) 
     ++ (setup_link_paths ./config ~/.config)
-    ++ ( mkdir ~/.local/bin ; setup_link_paths ./bin ~/.local/bin)
+    ++ (setup_link_paths ./bin ~/.local/bin)
 )
-| each { echo $in }
-| each { ln -s $in.src $in.target }
+| each {
+    print $in
+    print $'Trying to remove existing ($in.target)'
+    rm -rv $in.target
+    print 'Creating symlink'
+    ln -s $in.src $in.target  
+} 
+| ignore
 

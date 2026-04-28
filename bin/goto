@@ -6,22 +6,24 @@ def main []: nothing -> nothing {
     # TODO: allow selecting files
     let target = [
         "Babies/"
-        "Downloads"
-        ".disease/bin"
-        ".disease/config"
+        "Downloads/"
+        ".config/"
+        ".local/bin/"
         "Apps/"
     ]
     | each { [ $env.HOME $in ] | path join }
-    | each { ls -a $in }
+    | each { ls -al $in }
     | flatten
-    | where type == dir
-    | get name
+    | each { |entry| $entry.target? | default $entry.name }
     | str join (char newline)
     | menu -l 10
 
-    if ($target | is-empty) or not ($target | path exists) { return }
+    if ($target | is-empty) or not ($target | path exists) { 
+        return (error make $'Invalid path: ($target)') 
+    }
 
-    cd $target
+    let dir = if ($target | path type) == dir { $target } else { $target | dirname }
+    cd $dir
 
     if $env.EDITOR != 'kak' {
         $env.EDITOR
@@ -34,5 +36,8 @@ def main []: nothing -> nothing {
         | str replace -ar [\s\.]+ _
         | str trim --char _
 
-    kak -C $session_name -e "daemonize-session; try %{cd src}"
+    let args = [ -C $session_name -e "daemonize-session; try %{cd src}" ]
+        | if ($target | path type) != dir { $in | append $target } else { $in }
+
+    kak ...$args
 }

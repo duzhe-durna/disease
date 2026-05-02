@@ -3,10 +3,6 @@
 #
 # search for a regex pattern among all opened buffers
 # similar to grep.kak
-#
-#
-# search for a regex pattern among all opened buffers
-# similar to grep.kak
 
 decl str toolsclient
 decl str jumpclient

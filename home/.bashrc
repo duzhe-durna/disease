@@ -10,9 +10,10 @@ custom_path=":$HOME/.local/bin:$HOME/bin"
 if ! [[ "$PATH" =~ "$custom_path" ]]; then
     PATH+="$custom_path"
 fi
+
 export PATH
-export KAKOUNE_RUNTIME=/usr/local/share/kak
-export KAKOUNE_POSIX_SHELL=/usr/bin/bash
+export KAKOUNE_RUNTIME=$HOME/.config/kak
+export KAKOUNE_POSIX_SHELL=/usr/bin/sh
 export EDITOR=kak
 export VISUAL=$EDITOR
 

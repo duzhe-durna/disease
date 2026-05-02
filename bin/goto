@@ -22,7 +22,7 @@ def main []: nothing -> nothing {
         return (error make $'Invalid path: ($target)') 
     }
 
-    let dir = if ($target | path type) == dir { $target } else { $target | dirname }
+    let dir = if ($target | path type) == dir { $target } else { $target | path dirname }
     cd $dir
 
     if $env.EDITOR != 'kak' {

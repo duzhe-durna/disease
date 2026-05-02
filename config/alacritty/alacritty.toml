@@ -1,4 +1,4 @@
-terminal.shell = "nu"
+terminal.shell = 'nu'
 
 [general]
 import = ["./theme"]

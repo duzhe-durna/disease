@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-wmenu-run -i -N fffaf3 -n 797593 -S f2e9e1 -s 575279 $@
+wmenu-run -i -N 2a273f -n 908caa -S 2a273f -s e0def4 $@

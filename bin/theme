@@ -18,8 +18,7 @@ def main []: nothing -> nothing {
 
     # kak
     $"colorscheme ($selected)" | save -f $"($env.HOME)/.config/kak/theme"
-    $"theme ($selected)" | save -f $"($env.HOME)/.config/nukak/theme"
-    kakeval $"theme ($selected)"
+    kakeval $"colorscheme ($selected)"
 
     # alacritty
     $"general.import = ['./($selected).toml']" | save -f $"($env.HOME)/.config/alacritty/theme"

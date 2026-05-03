@@ -28,8 +28,9 @@ define-command -docstring "start a live grep in the *grep* buffer" live-grep %{
         } live-grep: %{
             nop %sh{ rm $kak_opt_live_grep_file }
             remove-hooks window LiveGrepPrompt
+
             evaluate-commands -save-regs / %sh{
-                if [ $kak_opt_live_grep_select_matches == true ]; then
+                if [ $kak_opt_live_grep_select_matches = true ]; then
                     query=$(echo "$kak_quoted_text" | sed "s/'/''/g")
                     printf %s\\n "try %§
                         execute-keys '%<a-s>s[^:]*:[^:]*:([^:]*:)?<ret>l<a-l>'

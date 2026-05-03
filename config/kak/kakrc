@@ -1,3 +1,14 @@
+eval %sh{
+    autoload_directory() {
+        find -L "$1" -type f -name '*\.kak' \
+            | sed 's/.*/try %{ source "&" } catch %{ echo -debug Autoload: could not load "&" }/'
+    }
+
+    if [ -d "${kak_runtime}/autoload" ]; then
+        autoload_directory ${kak_runtime}/autoload
+    fi
+}
+
 def -override -params 1 -docstring "colorscheme <name>: enable named colorscheme" colorscheme %{
     source "%val{runtime}/colors/%arg{1}.kak"
 }
@@ -127,7 +138,7 @@ def find-edit-buffer -docstring 'Open an exising buffer' %{
 }
 
 def ls -docstring 'List files in the current directory' -file-completion %{
-    eval %sh{ echo "info -title '$PWD' '$(ls -Alh)'" }
+    eval %sh{ printf %s "info -title '$PWD' '$(ls -Alh)'" }
 }
 
 def lang -docstring 'Set a filetype for current buffer' -params 1 %{ set-option buffer filetype %arg{1} }
@@ -140,27 +151,28 @@ def set-langmap -params 1 %{ eval %sh{
     new_current="$1"
     alt_map=""
     action="map"
-    if [[ $new_current == "en" || $new_current == $kak_opt_current_langmap ]]; then
+    if [ "$new_current" = "en" ] || [ "$new_current" = "$kak_opt_current_langmap" ]; then
         new_current="en"
         action="unmap"
         case $kak_opt_current_langmap in
-            "ua") alt_map="$ua" ;;
-            "ru") alt_map="$ru" ;;
-            *) exit ;;
+            ua) alt_map="$ua" ;;
+            ru) alt_map="$ru" ;;
+            *) exit 1 ;;
         esac
-    elif [[ $new_current == "ua" ]]; then
+    elif [ "$new_current" = "ua" ]; then
         alt_map="$ua"
-    elif [[ $new_current == "ru" ]]; then
+    elif [ "$new_current" = "ru" ]; then
         alt_map="$ru"
     else
-        printf "fail Unsupported langmap: $new_current"
-        exit
+        echo "fail Unsupported langmap: $new_current"
+        exit 1
     fi
-    CMD=()
+
+    cmd=""
     for ((i=0; i < ${#default}; i++)); do
-        CMD+=("${action} global insert %§${default:i:1}§ %§${alt_map:i:1}§; ")
+        cmd+="${action} global insert %§${default:i:1}§ %§${alt_map:i:1}§; "
     done
-    printf %s "${CMD[*]}; set global current_langmap $new_current"
+    printf %s "${cmd}; set global current_langmap $new_current"
 } }
 
 alias global d delete-buffer
@@ -183,15 +195,28 @@ set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column}
 - branch:(%sh{git branch --show-current 2> /dev/null})'
 
 
-hook global -group insert-color ModeChange .*:.*:insert %{
+# Cursor color change on entering insert mode 
+hook global -group insert-color ModeChange push:.*:insert %{
     set-face buffer PrimaryCursor InsertCursor
     set-face buffer PrimaryCursorEol InsertCursor
 }
-hook global -group insert-color ModeChange .*:insert:.* %{ try %{
+hook global -group insert-color ModeChange .*:insert:normal %{ try %{
     unset-face buffer PrimaryCursor
     unset-face buffer PrimaryCursorEol
 } }
 
+def -hidden write-buffer-if-modified %{ eval -draft %sh{ [ $kak_modified = true ] && printf %s "write" }  }
+
+# Auto-save
+decl bool auto_save_enabled true
+hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
+    hook -group auto-save buffer ModeChange .*:insert:.* write-buffer-if-modified
+    hook -group auto-save buffer NormalKey (q|d|<a-d>|c|<a-c>|r|R|p|P|u|U|<lt>|<a-lt>|<gt>|<a-gt>|!|:|\|`|~) write-buffer-if-modified
+}
+
+hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{ rmhooks buffer auto-save }
+
+# Per filetype settings
 hook global WinSetOption filetype=(yaml|json|markdown) %{
     rmhooks window markdown-trim-indent 
     set buffer tabstop 2
@@ -203,13 +228,6 @@ hook global BufOpenFile .*\.wgsl %{
 hook global BufSetOption filetype=git.* %{
     set buffer auto_save_enabled false
 }
-# Auto-save
-decl bool auto_save_enabled true
-hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
-    hook -group auto-save buffer ModeChange .*:insert:.* %{ write }
-    hook -group auto-save buffer NormalKey .* %{ eval %sh{ [ $kak_modified == true ] && printf %s "write" } }
-}
-hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{ rmhooks buffer auto-save }
 
 map global insert <c-w> %{<a-;>b<a-;>"_d}
 map global insert <c-h> <backspace>
@@ -293,34 +311,44 @@ map global window-mode s ':buffer-split-vertical<ret>' \
 map global window-mode t ':buffer-split-tab<ret>' \
     -docstring 'Open current buffer in a tab'
 
+declare-user-mode cargo
+
+map -docstring "Enter cargo mode" \
+    global user c ':enter-user-mode cargo<ret>'
+map -docstring "Run project" \
+    global cargo r ':cargo run<ret>'
+map -docstring "Run tests" \
+	global cargo t %{:cargo test<ret>}
+map -docstring "Check syntax" \
+	global cargo c %{:cargo clippy<ret>}
+map -docstring "Build documentation" \
+	global cargo d %{:cargo doc<ret>}
+map -docstring "Next error" \
+	global cargo n %{:cargo-next-error<ret>}
+map -docstring "Previous error" \
+	global cargo p %{:cargo-previous-error<ret>}
+map -docstring "Format" \
+	global cargo f %{:nop %sh{ cargo fmt --manifest-path $(cargo locate-project --message-format plain) }<ret>}
+
+map global cargo b ':b *cargo*<ret>' \
+    -docstring "Open *cargo* buffer"
+
 # alt + <anyaction> to escape insert mode
 evaluate-commands %sh{
-    keys='h j k l H J K L '
-    keys+='o I O A ' 
-    keys+='t T f F g G ] [ ' 
-    keys+='b w e B W E ' 
-    keys+='x X '
-    keys+='c C d '
-    keys+='m M n N '
-    cmd=""
+    keys='h j k l H J K L 
+        o I O A  
+        t T f F g G ] [  
+        b w e B W E  
+        x X 
+        c C d 
+        m M n N '
+
     for k in $keys; do
-        cmd+="map global insert <a-$k> '<esc>$k' ; "
+        printf %s "map global insert <a-$k> '<esc>$k' ; "
     done
-    printf %s "eval %{ $cmd }"
 }
 
 source "%val{config}/theme"
-
-eval %sh{
-    autoload_directory() {
-        find -L "$1" -type f -name '*\.kak' \
-            | sed 's/.*/try %{ source "&" } catch %{ echo -debug Autoload: could not load "&" }/'
-    }
-
-    if [ -d "${kak_runtime}/autoload" ]; then
-        autoload_directory ${kak_runtime}/autoload
-    fi
-}
 
 # try %{
 #     eval %sh{kak-lsp}

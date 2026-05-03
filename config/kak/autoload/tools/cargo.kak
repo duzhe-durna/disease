@@ -143,25 +143,3 @@ define-command cargo-previous-error -docstring 'Jump to the previous cargo error
     }
 }
 
-declare-user-mode cargo
-
-map -docstring "Enter cargo mode" \
-    global user c ':enter-user-mode cargo<ret>'
-map -docstring "Run project" \
-    global cargo r ':cargo run<ret>'
-map -docstring "Run tests" \
-	global cargo t %{:cargo test<ret>}
-map -docstring "Check syntax" \
-	global cargo c %{:cargo clippy<ret>}
-map -docstring "Build documentation" \
-	global cargo d %{:cargo doc<ret>}
-map -docstring "Next error" \
-	global cargo n %{:cargo-next-error<ret>}
-map -docstring "Previous error" \
-	global cargo p %{:cargo-previous-error<ret>}
-map -docstring "Format" \
-	global cargo f %{:sh cargo fmt --manifest-path $(cargo locate-project --message-format plain)<ret>}
-
-map global cargo b ':b *cargo*<ret>' \
-    -docstring "Open *cargo* buffer"
-

@@ -56,7 +56,7 @@ add-highlighter shared/kakrc/shell8 region -recurse '<'  '(^|\h)\K-?shell-script
 
 evaluate-commands %sh{
     # Grammar
-    keywords="reg set def eval exec rmhl decl
+    keywords="reg set def eval exec rmhl decl compl
               add-highlighter alias arrange-buffers buffer buffer-next buffer-previous catch
               change-directory colorscheme debug declare-option declare-user-mode define-command complete-command
               delete-buffer delete-buffer! echo edit edit! enter-user-mode evaluate-commands execute-keys

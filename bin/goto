@@ -36,7 +36,7 @@ def main []: nothing -> nothing {
         | str replace -ar [\s\.]+ _
         | str trim --char _
 
-    let args = [ -C $session_name -e "daemonize-session; try %{cd src}" ]
+    let args = [ -C $session_name -e "daemonize-session; try %{cd src ; edit main.rs}" ]
         | if ($target | path type) != dir { $in | append $target } else { $in }
 
     kak ...$args

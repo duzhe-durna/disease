@@ -1,0 +1,18 @@
+pub fn main() {
+    let Some(key) = std::env::args().skip(1).next() else {
+        println!("fail Have no input key");
+        return;
+    };
+
+    let (open, close) = match key.as_str() {
+        "<quote>" => ("'", "'"),
+        "<dquote>" => ("\"", "\""),
+        "(" | ")" => ("(", ")"),
+        "{" | "}" => ("{", "}"),
+        "[" | "]" => ("[", "]"),
+        "<lt>" | "<gt>" => ("<lt>", "<gt>"),
+        _ => return,
+    };
+
+    println!(r#"exec -draft -itersel %[Zi{open}<esc>za{close}<esc>z]"#);
+}

@@ -59,28 +59,36 @@ define-command cargo \
 -params .. \
 -docstring 'cargo [<arguments>]: cargo utility wrapper All the optional arguments are forwarded to the cargo utility' \
 %{
-    evaluate-commands %sh{
-        if ! cargo locate-project &> /dev/null; then
-            printf "fail Not in cargo directory";
+    eval %sh{
+        root=$(cargo locate-project 2> /dev/null)
+        if [ $? -eq 0 ]; then
+            printf %s "set buffer cargo_workspace_root %{$root}" 
         else
-            printf "nop"
+            printf "fail Not in cargo directory";
         fi
     }
     try %{ db *cargo* }
-    fifo -name *cargo* -script %{trap INT QUIT; cargo "$@"} -- %arg{@}
+    fifo -scroll -name *cargo* -script %{trap INT QUIT; cargo "$@"} -- %arg{@}
+    set buffer filetype cargo
+}
 
-    map -docstring "Jump to current error" buffer normal <ret> %{: cargo-jump<ret>}
-
+hook global WinSetOption filetype=cargo %{
     set-option buffer readonly true
-    set-option buffer cargo_workspace_root %sh{ dirname $(cargo locate-project --workspace --message-format plain) }
 
     add-highlighter buffer/cargo ref cargo
     add-highlighter buffer/ wrap -word
+
+    hook -group cargo-jump buffer NormalKey <ret> cargo-jump
+    hook -once -always window WinSetOption filetype=.* %{ remove-hooks window cargo-* }
 }
 
 define-command -hidden cargo-open-error -params 4 %{
     evaluate-commands -try-client %opt{jumpclient} %{
-        edit -existing "%arg{1}" "%arg{2}" "%arg{3}"
+        try %{
+            edit -existing "%arg{1}" "%arg{2}" "%arg{3}"
+        } catch %{
+            edit -existing "%opt{cargo_workspace_root}/%arg{1}" "%arg{2}" "%arg{3}"
+        }
         info -anchor "%arg{2}.%arg{3}" "%arg{4}"
         # try %{ focus %val{client} }
     }
@@ -98,7 +106,7 @@ define-command -hidden cargo-jump %{
         # We found a Cargo error, let's open it.
         set-option buffer cargo_current_error_line "%val{cursor_line}"
         cargo-open-error \
-            "%opt{cargo_workspace_root}/%reg{2}" \
+            "%reg{2}" \
             "%reg{3}" \
             "%sh{ echo ${kak_main_reg_4:-1} }" \
             "%reg{1}"

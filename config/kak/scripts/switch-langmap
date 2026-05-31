@@ -1,0 +1,198 @@
+---
+package.edition = "2024"
+---
+
+use std::env;
+
+const LANG_MAP_CHARS: &[[char; 3]] = &[
+    ['?', ',', ','],
+    ['/', '.', '.'],
+    ['>', 'Ю', 'Ю'],
+    ['.', 'ю', 'ю'],
+    ['<', 'Б', 'Б'],
+    [',', 'б', 'б'],
+    ['M', 'Ь', 'Ь'],
+    ['m', 'ь', 'ь'],
+    ['N', 'Т', 'Т'],
+    ['n', 'т', 'т'],
+    ['B', 'И', 'И'],
+    ['b', 'и', 'и'],
+    ['V', 'М', 'М'],
+    ['v', 'м', 'м'],
+    ['C', 'С', 'С'],
+    ['c', 'с', 'с'],
+    ['X', 'Ч', 'Ч'],
+    ['x', 'ч', 'ч'],
+    ['Z', 'Я', 'Я'],
+    ['z', 'я', 'я'],
+    ['"', 'Э', 'Є'],
+    ['\'', 'э', 'є'],
+    [':', 'Ж', 'Ж'],
+    [';', 'ж', 'ж'],
+    ['L', 'Д', 'Д'],
+    ['l', 'д', 'д'],
+    ['K', 'Л', 'Л'],
+    ['k', 'л', 'л'],
+    ['J', 'О', 'О'],
+    ['j', 'о', 'о'],
+    ['H', 'Р', 'Р'],
+    ['h', 'р', 'р'],
+    ['G', 'П', 'П'],
+    ['g', 'п', 'п'],
+    ['F', 'А', 'А'],
+    ['f', 'а', 'а'],
+    ['D', 'В', 'В'],
+    ['d', 'в', 'в'],
+    ['S', 'Ы', 'І'],
+    ['s', 'ы', 'і'],
+    ['A', 'Ф', 'Ф'],
+    ['a', 'ф', 'ф'],
+    ['}', 'Ъ', 'Ї'],
+    [']', 'ъ', 'ї'],
+    ['{', 'Х', 'Х'],
+    ['[', 'х', 'х'],
+    ['P', 'З', 'З'],
+    ['p', 'з', 'з'],
+    ['O', 'Щ', 'Щ'],
+    ['o', 'щ', 'щ'],
+    ['I', 'Ш', 'Ш'],
+    ['i', 'ш', 'ш'],
+    ['U', 'Г', 'Г'],
+    ['u', 'г', 'г'],
+    ['Y', 'Н', 'Н'],
+    ['y', 'н', 'н'],
+    ['T', 'Е', 'Е'],
+    ['t', 'е', 'е'],
+    ['R', 'К', 'К'],
+    ['r', 'к', 'к'],
+    ['E', 'У', 'У'],
+    ['e', 'у', 'у'],
+    ['W', 'Ц', 'Ц'],
+    ['w', 'ц', 'ц'],
+    ['Q', 'Й', 'Й'],
+    ['q', 'й', 'й'],
+    ['|', '|', 'Ґ'],
+    ['\\', '\\', 'ґ'],
+    ['+', '+', '+'],
+    ['=', '=', '='],
+    ['_', '_', '_'],
+    [')', ')', ')'],
+    ['0', '0', '0'],
+    ['(', '(', '('],
+    ['9', '9', '9'],
+    ['*', '*', '*'],
+    ['8', '8', '8'],
+    ['&', '?', '?'],
+    ['7', '7', '7'],
+    ['^', ':', ':'],
+    ['6', '6', '6'],
+    ['%', '%', '%'],
+    ['5', '5', '5'],
+    ['$', ';', ';'],
+    ['4', '4', '4'],
+    ['#', '№', '№'],
+    ['3', '3', '3'],
+    ['@', '"', '"'],
+    ['2', '2', '2'],
+    ['!', '!', '!'],
+    ['1', '1', '1'],
+    ['~', 'Ё', 'ʼ'],
+    ['`', 'ё', '\''],
+];
+
+macro_rules! enum_LangMap {
+    ($($variant:ident),*) => {
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        enum LangMap {
+            $($variant,)*
+        }
+
+        impl LangMap {
+            const VARIANTS: &[Self] = &[ $(Self::$variant,)* ];
+        }
+    }
+}
+
+enum_LangMap! {
+    En,
+    Ru,
+    Ua
+}
+
+#[derive(Debug)]
+struct Failed {
+    command: Vec<String>,
+    error: Error,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    MissingCurrentLangmapArg1 ,
+    MissingNextLangmapArg2 ,
+    NotACorrectLangMap(String),
+}
+
+fn main() {
+    match run() {
+        Ok(_) => (),
+        Err(err) => eprintln!("{err:?}")
+    }
+}
+
+fn run() -> Result<(), Failed> {
+    let mut args = std::env::args().skip(1);
+    let mut out = std::io::stdout();
+
+    let current = args.next().ok_or_else(fail(Error::MissingCurrentLangmapArg1)).and_then(LangMap::try_from)?;
+    let next = args.next().ok_or_else(fail(Error::MissingNextLangmapArg2)).and_then(LangMap::try_from)?;
+
+    let (action, next_str) = match (&current, &next) {
+        (current, next) if current == next => ("unmap", LangMap::En.as_str()),
+        (_, LangMap::En) => ("unmap", next.as_str()),
+        _ => ("map", next.as_str()),
+    };
+
+    use std::io::Write;
+    let stdout = &mut std::io::stdout();
+
+    for char_ in LANG_MAP_CHARS {
+        let _ = writeln!(
+            stdout,
+            r#"{action} global insert %§{current_char}§ %§{new_char}§"#,
+            current_char = char_[LangMap::En as usize],
+            new_char = char_[next as usize],
+        );
+    }
+
+    let _ = writeln!(out, "set-option global current_langmap {next_str}");
+
+    Ok(())
+}
+
+impl LangMap {
+    const fn as_str(&self) -> &'static str {
+        match self {
+            LangMap::En => "en",
+            LangMap::Ru => "ru",
+            LangMap::Ua => "ua",
+        }
+    }
+}
+
+impl TryFrom<String> for LangMap {
+    type Error = Failed;
+    fn try_from(it: String) -> Result<Self, Self::Error> {
+        Self::VARIANTS
+            .iter()
+            .find(|langmap| langmap.as_str() == it.as_str())
+            .copied()
+            .ok_or_else(fail(Error::NotACorrectLangMap(it)))
+    }
+}
+
+fn fail(error: Error) -> impl FnOnce() -> Failed {
+    move || Failed {
+        command: env::args().skip(1).collect(),
+        error,
+    }
+}

@@ -13,7 +13,7 @@ fi
 
 export PATH
 export KAKOUNE_RUNTIME=$HOME/.config/kak
-export KAKOUNE_POSIX_SHELL=/usr/bin/sh
+export KAKOUNE_POSIX_SHELL=/usr/bin/dash
 export EDITOR=kak
 export VISUAL=$EDITOR
 
@@ -43,24 +43,12 @@ export TERM="xterm-256color"
 bind -x '"\C-l": ls -AhlX --group-directories-first'
 bind -x '"\C-g": goto'
 
-alias pactivate='source ./.venv/bin/activate'
 alias ..='cd ..'
 alias ...='cd ../..'
 
 kman() { kak -e "man $1"; }
 
-kc() {
-    s=$(kak -l | wmenu $WMENU_OPTS)
-    if [ -n "$s" ]; then
-        kak -c "$s"
-    fi
-}
 alias k='kak'
-alias kgrep='ke "live-grep"'
-
-alias dots='/usr/bin/git --git-dir=$HOME/.dots --work-tree=$HOME'
-alias dotsdo='dots commit -a -m "oh hi mark" ; dots push'
-
 alias up='sudo dnf update -y; rustup update'
 
 . "$HOME/.cargo/env"

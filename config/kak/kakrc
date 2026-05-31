@@ -1,7 +1,7 @@
 eval %sh{
     autoload_directory() {
         find -L "$1" -type f -name '*\.kak' \
-            | sed 's/.*/try %{ source "&" } catch %{ echo -debug Autoload: could not load "&" }/'
+        | sed 's/.*/try %{ source "&" } catch %{ echo -debug Autoload: could not load "&" }/'
     }
 
     if [ -d "${kak_runtime}/autoload" ]; then
@@ -9,7 +9,7 @@ eval %sh{
     fi
 }
 
-def -override -params 1 -docstring "colorscheme <name>: enable named colorscheme" colorscheme %{
+def -params 1 -docstring "colorscheme <name>: enable named colorscheme" colorscheme %{
     source "%val{runtime}/colors/%arg{1}.kak"
 }
 compl -menu colorscheme shell-script-candidates %{
@@ -19,7 +19,94 @@ compl -menu colorscheme shell-script-candidates %{
     done | sort -u
 }
 
-def -override terminal -docstring 'Open terminal with optional command to run' -params ..1 %{ eval %sh{
+decl -hidden str scripts "%val[runtime]/scripts"
+
+def script-run -params 1.. -docstring %exp{
+    script-run <script-name> [args...]
+} %{ eval %sh{
+    script="$kak_opt_scripts/$1"
+    shift
+    if [ ! -f "$script" ]; then
+        printf "fail Not a script: %s" "$script"
+    else
+        cargo +nightly -Zscript "$script" $@
+    fi
+} }
+compl -menu script-run shell-script-candidates %{ ls $kak_opt_scripts }
+
+def script-check -params 1.. -docstring %{
+    script-check [-run] [-path] <script-name> [args...]: check for errors in fifo buffer
+    Switches:
+        -run  run instead of checking
+        -path treat the <script-name> as a script path
+} %{
+    eval %sh{
+        script_dir="$kak_opt_scripts"
+        cmd="cargo +nightly -Zscript check --manifest-path"
+
+        while true; do
+            case "$1" in
+            "-run")
+                cmd="cargo +nightly -Zscript"
+                shift
+            ;;
+            "-path")
+                script_dir=""
+                shift
+            ;;
+            *)
+                script="$script_dir/$1"
+                shift
+                break
+            ;;
+            esac
+        done
+
+        if [ ! -f "$script" ]; then
+            printf "fail Not a script: %s" "$script"
+        else
+            printf %s "try %{ db *cargo* }; fifo -name *cargo* -scroll -- $cmd %{$script} $@"
+        fi
+    }
+    set buffer filetype cargo
+}
+compl -menu script-check shell-script-candidates %{ ls $kak_opt_scripts }
+
+decl -hidden str script_template \
+'---
+package.edition = "2024"
+---
+
+fn main() {
+    println!("echo aboba")
+}'
+
+def script-edit -params 1..2 -docstring %{
+    script-edit [-path] <script-name>
+    Switches:
+        -path treat the <script-name> as a script path
+} %{ eval -save-regs dquote %sh{
+    if [ "$1" = "-path" ]; then
+        script_dir=""
+        shift
+    else
+        script_dir="$kak_opt_scripts"
+    fi
+
+    script="$script_dir/$1"
+
+    printf %s "try %{
+        edit -existing %{$script}
+    } catch %{
+        reg dquote %opt[script_template]
+        edit %{$script}
+        exec -draft '%R'
+    }
+    set-option buffer filetype rust"
+} }
+compl script-edit shell-script-candidates %{ ls $kak_opt_scripts }
+
+def terminal -docstring 'Open terminal with optional command to run' -params ..1 %{ eval %sh{
     if [ $# -gt 0 ]; then
         alacritty msg create-window --working-directory $PWD -e sh -c "$@"
     else 
@@ -87,36 +174,6 @@ def eval-selected-all-sessions %{ eval %sh{
 
 def swap-selections %{ try %{ exec '<a-z>a<a-)>' } }
 
-def surround-selection -params 1..2 %{ eval -save-regs 'ocz' %{
-    set-register o %arg{1}
-    set-register c %arg{2}
-    exec -draft -itersel 'Z"oPz"cpz'
-} }
-
-def surround-selection-key -params ..1 %{ on-key %{ eval -save-regs 'ocm' %{
-    eval %sh{
-        spc=""
-        [ -n "$1" ] && spc=" "
-        o="$kak_key"
-        c="$kak_key"
-        case "$o" in
-            "<esc>") exit 0 ;;
-            "<quote>") o="'" c="'" ;;
-            "<dquote>")  o='"' c='"' ;;
-            "<lt>" | "<gt>") o="<" c=">" ;;
-            "(" | ")") o="(" c=")" ;;
-            "[" | "]") o="[" c="]" ;;
-            "{") c="}" ;;
-        esac
-        o="$o$spc"
-        c="$spc$c"
-        printf %s "set-register c %¶$c¶ ;
-                   set-register o %¶$o¶ ;"
-    }
-
-    surround-selection "%reg{o}" "%reg{c}"
-} } }
-
 def remove-matching-forward %{exec -save-regs '^"' 'mm;Zm;dzd'}
 
 def remove-matching-backward %{exec -save-regs '^"' '<a-m><a-m>;Zm;dzd'}
@@ -129,7 +186,8 @@ def find-edit-file -docstring %{
     prompt -menu  -shell-script-candidates %{
         find $kak_opt_find_edit_path -type f \
             -not -path '*/node_modules/*' \
-            -not -path '*/target/*'
+            -not -path '*/target/*' \
+            -not -path '*/.git/*'
     }  'edit ' %{ edit -existing %val{text}  }
 } 
 
@@ -144,42 +202,15 @@ def ls -docstring 'List files in the current directory' -file-completion %{
 def lang -docstring 'Set a filetype for current buffer' -params 1 %{ set-option buffer filetype %arg{1} }
 
 decl -hidden str current_langmap 'en'
-def set-langmap -params 1 %{ eval %sh{
-    default="\`~1!2@3#4\$5%6^7&8*9(0)_=+\\|qQwWeErRtTyYuUiIoOpP[{]}aAsSdDfFgGhHjJkKlL;:'\"zZxXcCvVbBnNmM,<.>/?"
-    ru="ёЁ1!2\"3№4;5%6:7?8*9(0)_=+\\|йЙцЦуУкКеЕнНгГшШщЩзЗхХъЪфФыЫвВаАпПрРоОлЛдДжЖэЭяЯчЧсСмМиИтТьЬбБюЮ.,"
-    ua="'ʼ1!2\"3№4;5%6:7?8*9(0)_=+ґҐйЙцЦуУкКеЕнНгГшШщЩзЗхХїЇфФіІвВаАпПрРоОлЛдДжЖєЄяЯчЧсСмМиИтТьЬбБюЮ.,"
-    new_current="$1"
-    alt_map=""
-    action="map"
-    if [ "$new_current" = "en" ] || [ "$new_current" = "$kak_opt_current_langmap" ]; then
-        new_current="en"
-        action="unmap"
-        case $kak_opt_current_langmap in
-            ua) alt_map="$ua" ;;
-            ru) alt_map="$ru" ;;
-            *) exit 1 ;;
-        esac
-    elif [ "$new_current" = "ua" ]; then
-        alt_map="$ua"
-    elif [ "$new_current" = "ru" ]; then
-        alt_map="$ru"
-    else
-        echo "fail Unsupported langmap: $new_current"
-        exit 1
-    fi
 
-    cmd=""
-    for ((i=0; i < ${#default}; i++)); do
-        cmd+="${action} global insert %§${default:i:1}§ %§${alt_map:i:1}§; "
-    done
-    printf %s "${cmd}; set global current_langmap $new_current"
-} }
+def surround-selection-from-key %{ on-key %{ script-run surround-selection-from-key %val{key} } }
 
 alias global d delete-buffer
 
 add-highlighter global/ number-lines -relative -hlcursor -separator ' '
 add-highlighter global/ show-matching
 
+set global startup_info_version 99999999999999
 set global ui_options terminal_assistant=cat terminal_synchronized=true
 set global tabstop 4
 set global scrolloff 5,20
@@ -273,23 +304,22 @@ map global user T %{:find-edit-file "../test*"<ret>} -docstring 'Try to fuzzy se
 map global user f %{:find-edit-file .<ret>}          -docstring 'Fuzzy search for the files from current directory'
 map global user F %{:find-edit-file ../<ret>}        -docstring 'Fuzzy search for the files from parent directory'
 
-map global insert <c-6> %{<a-;>:set-langmap ua<ret>}
-map global insert <c-7> %{<a-;>:set-langmap ru<ret>}
-map global normal <c-6> %{<a-;>:set-langmap ua<ret>}
-map global normal <c-7> %{<a-;>:set-langmap ru<ret>}
+map global insert <c-6> %{<a-;>:script-run switch-langmap ua<ret>}
+map global insert <c-7> %{<a-;>:script-run switch-langmap ru<ret>}
+map global normal <c-6> %{<a-;>:script-run switch-langmap ua<ret>}
+map global normal <c-7> %{<a-;>:script-run switch-langmap ru<ret>}
 
 map global normal <c-l> :ls<ret>
 
 map global normal <a-V> :remove-matching-backward<ret>
 map global normal <a-v> :remove-matching-forward<ret>
 
-map global normal <a-'> :surround-selection-key<ret>
-map global normal <a-"> %{:surround-selection-key sooqa<ret>}
-
 map global normal <a-r> :swap-selections<ret>
 
-map global user  :  :eval-selected-all-sessions<ret> 
-map global user ';' :eval-selected<ret>
+map global normal <a-'> :surround-selection-from-key<ret>
+
+map global user  :      :eval-selected-all-sessions<ret> 
+map global user ';'     :eval-selected<ret>
 
 declare-user-mode window-mode
 
@@ -316,11 +346,11 @@ declare-user-mode cargo
 map -docstring "Enter cargo mode" \
     global user c ':enter-user-mode cargo<ret>'
 map -docstring "Run project" \
-    global cargo r ':cargo run<ret>'
+    global cargo r %{:try %{cargo run} catch %{script-check -run -path %val{buffile}}<ret>}
 map -docstring "Run tests" \
 	global cargo t %{:cargo test<ret>}
 map -docstring "Check syntax" \
-	global cargo c %{:cargo clippy<ret>}
+	global cargo c %{:try %{cargo clippy} catch %{script-check -path %val{buffile}}<ret>}
 map -docstring "Build documentation" \
 	global cargo d %{:cargo doc<ret>}
 map -docstring "Next error" \
@@ -328,7 +358,7 @@ map -docstring "Next error" \
 map -docstring "Previous error" \
 	global cargo p %{:cargo-previous-error<ret>}
 map -docstring "Format" \
-	global cargo f %{:nop %sh{ cargo fmt --manifest-path $(cargo locate-project --message-format plain) }<ret>}
+	global cargo f %{:format<ret>}
 
 map global cargo b ':b *cargo*<ret>' \
     -docstring "Open *cargo* buffer"

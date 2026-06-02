@@ -44,26 +44,6 @@ def walk \
 } }
 complete-command walk shell-script-candidates %{ls -Ah "$kak_opt_walkdir"}
 
-def walk-sh \
--docstring 'Execute shell command in the current *walk* file browser directory' \
--override \
--params 1.. \
-%{
-    test-if-in-walk-buffer
-    eval -save-regs 'a' %{
-        sh %exp{cd "$kak_opt_walkdir" && eval "%arg{@}"}
-        set-register a %val{selection_desc}
-        walk "%opt{walkdir}"
-        select %reg{a}
-        eval %sh{
-            if [ -n "$kak_opt_shell_run_output" ]; then
-                echo "info '$kak_opt_shell_run_output'"
-            fi
-        }
-    }
-}
-complete-command walk-sh shell-script-candidates %{ ls -Ah "$kak_opt_walkdir" }
-
 def walk-cdhere \
 -docstring 'Set PWD to the current *walk* file browser directory' \
 -override \
@@ -113,7 +93,6 @@ hook -group walk-hooks global WinSetOption filetype=walk %{
     add-highlighter window/walk/exe regex "%opt{walkdir_exe_regex}" 1:magenta
     map buffer normal <ret> :walk-or-edit<ret>
     map buffer goto b '<esc>:walk "%opt{walkdir}/.."<ret>'
-    map buffer normal <c-ret> ':walk-sh '
     hook -group walk-mouse-cd buffer NormalKey <mouse:release:left.* %{ walk-or-edit }
     hook -once -always window WinSetOption filetype=.* %{
         remove-hooks global walk-highlight

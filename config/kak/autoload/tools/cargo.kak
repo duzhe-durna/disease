@@ -1,3 +1,5 @@
+provide-module cargo %{
+
 # https://github.com/krornus/kakoune-cargo
 #######################
 # Syntax highlighting #
@@ -58,19 +60,27 @@ define-command cargo \
 -override \
 -params .. \
 -docstring 'cargo [<arguments>]: cargo utility wrapper All the optional arguments are forwarded to the cargo utility' \
-%{
-    eval %sh{
-        root=$(cargo locate-project 2> /dev/null)
-        if [ $? -eq 0 ]; then
-            printf %s "set buffer cargo_workspace_root %{$root}" 
-        else
-            printf "fail Not in cargo directory";
-        fi
-    }
+%{ eval -save-regs c %{ 
     try %{ db *cargo* }
-    fifo -scroll -name *cargo* -script %{trap INT QUIT; cargo "$@"} -- %arg{@}
+    eval %sh{
+        cmd="cargo"
+        root=$(cargo locate-project --workspace --message-format plain 2> /dev/null)
+        if [ $? -eq 0 ]; then
+            root=$(dirname "$root")
+            cmd="cargo $@"
+        else
+            root="."
+            cmd="cargo -Zscript $@ --manifest-path '$kak_buffile'"
+        fi
+
+        printf %s "
+            set global cargo_workspace_root %{$root}
+            reg c %{$cmd}" 
+    }
+    echo -debug "running cargo cmd: %reg[c]"
+    fifo -scroll -name *cargo* -script %exp{trap INT QUIT; %reg[c]}
     set buffer filetype cargo
-}
+} }
 
 hook global WinSetOption filetype=cargo %{
     set-option buffer readonly true
@@ -85,7 +95,7 @@ hook global WinSetOption filetype=cargo %{
 define-command -hidden cargo-open-error -params 4 %{
     evaluate-commands -try-client %opt{jumpclient} %{
         try %{
-            edit -existing "%arg{1}" "%arg{2}" "%arg{3}"
+            edit -existing ".%arg{1}" "%arg{2}" "%arg{3}"
         } catch %{
             edit -existing "%opt{cargo_workspace_root}/%arg{1}" "%arg{2}" "%arg{3}"
         }
@@ -151,3 +161,4 @@ define-command cargo-previous-error -docstring 'Jump to the previous cargo error
     }
 }
 
+}

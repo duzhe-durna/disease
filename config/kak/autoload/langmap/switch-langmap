@@ -3,6 +3,7 @@ package.edition = "2024"
 ---
 
 use std::env;
+use std::io::Write;
 
 const LANG_MAP_CHARS: &[[char; 3]] = &[
     ['?', ',', ','],
@@ -120,6 +121,7 @@ enum_LangMap! {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Failed {
     command: Vec<String>,
     error: Error,
@@ -127,15 +129,15 @@ struct Failed {
 
 #[derive(Debug)]
 pub enum Error {
-    MissingCurrentLangmapArg1 ,
-    MissingNextLangmapArg2 ,
+    MissingCurrentLangmapArg1,
+    MissingNextLangmapArg2,
     NotACorrectLangMap(String),
 }
 
 fn main() {
     match run() {
         Ok(_) => (),
-        Err(err) => eprintln!("{err:?}")
+        Err(err) => eprintln!("{err:?}"),
     }
 }
 
@@ -143,8 +145,15 @@ fn run() -> Result<(), Failed> {
     let mut args = std::env::args().skip(1);
     let mut out = std::io::stdout();
 
-    let current = args.next().ok_or_else(fail(Error::MissingCurrentLangmapArg1)).and_then(LangMap::try_from)?;
-    let next = args.next().ok_or_else(fail(Error::MissingNextLangmapArg2)).and_then(LangMap::try_from)?;
+    let current = args
+        .next()
+        .ok_or_else(fail(Error::MissingCurrentLangmapArg1))
+        .and_then(LangMap::try_from)?;
+
+    let next = args
+        .next()
+        .ok_or_else(fail(Error::MissingNextLangmapArg2))
+        .and_then(LangMap::try_from)?;
 
     let (action, next_str) = match (&current, &next) {
         (current, next) if current == next => ("unmap", LangMap::En.as_str()),
@@ -152,12 +161,9 @@ fn run() -> Result<(), Failed> {
         _ => ("map", next.as_str()),
     };
 
-    use std::io::Write;
-    let stdout = &mut std::io::stdout();
-
     for char_ in LANG_MAP_CHARS {
         let _ = writeln!(
-            stdout,
+            out,
             r#"{action} global insert %§{current_char}§ %§{new_char}§"#,
             current_char = char_[LangMap::En as usize],
             new_char = char_[next as usize],

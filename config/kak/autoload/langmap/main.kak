@@ -6,4 +6,3 @@ def switch-langmap -params 1 %{ eval %sh{
 } }
 
 }
-

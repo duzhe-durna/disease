@@ -15,6 +15,39 @@ compl -menu colorscheme shell-script-candidates %{
 
 source "%val{config}/theme"
 
+require-module clipboard
+    map global user p %{:paste-sys-clipboard p<ret>} -docstring 'Past from system clpboard'
+    map global user P %{:paste-sys-clipboard P<ret>} -docstring 'Past from system clpboard'
+    map global user y :copy-sys-clipboard<ret>       -docstring 'Yank into system Clipboard'
+    map global user b :find-edit-buffer<ret>         -docstring 'Serch for the active buffers'
+
+require-module matching
+    map global normal <a-'> :surround-selection-on-key<ret>
+
+require-module splits
+    declare-user-mode window-mode
+    map global normal <c-w> ":enter-user-mode window-mode<ret>"
+
+    map global window-mode V ':terminal-horizontal nu<ret>'  -docstring 'Open terminal in a horizontal split'
+    map global window-mode S ':terminal-vertical nu<ret>'    -docstring 'Open terminal in a vertical split'
+    map global window-mode T ':terminal-tab nu<ret>'         -docstring 'Open terminal in a tab'
+
+    map global window-mode v ':buffer-split-horizontal<ret>' -docstring 'Open current buffer in a horizontal split'
+    map global window-mode s ':buffer-split-vertical<ret>'   -docstring 'Open current buffer in vertical split'
+    map global window-mode t ':buffer-split-tab<ret>'        -docstring 'Open current buffer in a tab'
+    map global window-mode q ":q<ret>"                       -docstring 'Quit current client'
+
+require-module cargo
+    declare-user-mode cargo
+    map global user c %{:enter-user-mode cargo<ret>}  -docstring "Enter cargo mode" 
+
+    map global cargo r %{:cargo run<ret>}             -docstring "Run project" 
+    map global cargo c %{:cargo check<ret>}           -docstring "Check syntax" 
+    map global cargo n %{:cargo-next-error<ret>}      -docstring "Next error" 
+    map global cargo p %{:cargo-previous-error<ret>}  -docstring "Previous error" 
+    map global cargo f %{:format<ret>}                -docstring "Format" 
+    map global cargo b %{:b *cargo*<ret>}             -docstring "Open *cargo* buffer"
+
 add-highlighter global/ number-lines -relative -hlcursor -separator ' '
 add-highlighter global/ show-matching
 
@@ -28,12 +61,8 @@ set global autoreload true
 
 require-module langmap
 set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
-{{context_info}} 
-{{mode_info}}
-- %val{client}@[%val{session}]
-- AS:%opt{auto_save_enabled}
-- (%opt{current_langmap})
-- branch:(%sh{git branch --show-current 2> /dev/null})'
+{{context_info}} {{mode_info}} - %val{client}@[%val{session}] - AS:%opt{auto_save_enabled} - (%opt{current_langmap})'
+# - branch:(%sh{git branch --show-current 2> /dev/null})'
 
 map global insert <c-w> %{<a-;>b<a-;>"_d}
 map global insert <c-h> <backspace>
@@ -71,10 +100,6 @@ map global goto p <esc>:grep-previous-match<ret> -docstring 'Goto previous grep 
 
 map global user w :w<ret>                            -docstring 'Save'
 map global user . :<ret>                             -docstring 'Repeate last command'
-map global user p %{:paste-sys-clipboard p<ret>}     -docstring 'Past from system clpboard'
-map global user P %{:paste-sys-clipboard P<ret>}     -docstring 'Past from system clpboard'
-map global user y :copy-sys-clipboard<ret>           -docstring 'Yank into system Clipboard'
-map global user b :find-edit-buffer<ret>             -docstring 'Serch for the active buffers'
 map global user T %{:find-edit-file "../test*"<ret>} -docstring 'Try to fuzzy search for the files in "../tests"'
 map global user f %{:find-edit-file .<ret>}          -docstring 'Fuzzy search for the files from current directory'
 map global user F %{:find-edit-file ../<ret>}        -docstring 'Fuzzy search for the files from parent directory'
@@ -93,46 +118,6 @@ map global normal <a-r> :swap-selections<ret>
 
 map global user  :      :eval-selected-all-sessions<ret> 
 map global user ';'     :eval-selected<ret>
-
-require-module matching
-    map global normal <a-'> :surround-selection-on-key<ret>
-
-declare-user-mode window-mode
-    map global normal <c-w> ":enter-user-mode window-mode<ret>"
-
-    map global window-mode V ':terminal-horizontal nu<ret>' \
-        -docstring 'Open terminal in a horizontal split'
-    map global window-mode T ':terminal-tab nu<ret>' \
-        -docstring 'Open terminal in a tab'
-    map global window-mode S ':terminal-vertical nu<ret>' \
-        -docstring 'Open terminal in a vertical split'
-
-    map global window-mode q ":q<ret>" \
-        -docstring 'Quit current client'
-    map global window-mode v ':buffer-split-horizontal<ret>' \
-        -docstring 'Open current buffer in a horizontal split'
-    map global window-mode s ':buffer-split-vertical<ret>' \
-        -docstring 'Open current buffer in vertical split'
-    map global window-mode t ':buffer-split-tab<ret>' \
-        -docstring 'Open current buffer in a tab'
-
-declare-user-mode cargo
-    map global user c ':enter-user-mode cargo<ret>' \
-        -docstring "Enter cargo mode" 
-    map global cargo r %{:cargo run<ret>} \
-        -docstring "Run project" 
-    map global cargo c %{:cargo check<ret>} \
-        -docstring "Check syntax" 
-    map global cargo n %{:cargo-next-error<ret>} \
-        -docstring "Next error" 
-    map global cargo p %{:cargo-previous-error<ret>} \
-        -docstring "Previous error" 
-    map global cargo f %{:format<ret>} \
-        -docstring "Format" 
-    map global cargo b ':b *cargo*<ret>' \
-        -docstring "Open *cargo* buffer"
-
-alias global d delete-buffer
 
 # alt + <anyaction> to escape insert mode
 evaluate-commands %sh{
@@ -177,10 +162,11 @@ hook global WinSetOption filetype=(yaml|json|markdown) %{
     set buffer indentwidth 2
 }
 
+alias global d delete-buffer
+
 def kill-session -params 1 %{ kill %arg{1} }
 compl -menu kill-session shell-script-candidates %{kak -l}
-def selected-camel-into-screaming-snake %{ exec -draft -itersel 's(?<lt>=[a-z])[A-Z]<ret>i_<esc><a-i>w~' }
-def selected-camel-into-snake %{ exec -draft -itersel 's(?<lt>=[a-z])[A-Z]<ret>i_<esc><a-i>w`'}
+
 def cdhere %{ cd %sh{ echo $(dirname "$kak_buffile") } }
 def eval-selected %{ eval %val{selection} }
 def swap-selections %{ try %{ exec '<a-z>a<a-)>' } }
@@ -189,12 +175,14 @@ def remove-matching-backward %{exec -save-regs '^"' '<a-m><a-m>;Zm;dzd'}
 def find-edit-buffer %{prompt -menu -buffer-completion 'Buffer: ' %{buffer %val{text}}}
 def ls -file-completion %{eval %sh{ printf %s "info -title '$PWD' '$(ls -Alh)'" }}
 def lang -params 1 %{ set-option buffer filetype %arg{1} }
+
 def eval-selected-all-sessions %{ eval %sh{
      cmd="$kak_selection"
      for s in $(kak -l); do
         echo "$cmd" | kak -p "$s"
      done
 } }
+
 def find-edit-file -docstring %{
     find-edit-file <path>: list all files in the <path>
 } -params 1 %{

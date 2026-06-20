@@ -1,4 +1,12 @@
 provide-module cargo %{
+declare-user-mode cargo
+
+map global cargo r %{:cargo run<ret>}             -docstring "Run project" 
+map global cargo c %{:cargo check<ret>}           -docstring "Check syntax" 
+map global cargo n %{:cargo-next-error<ret>}      -docstring "Next error" 
+map global cargo p %{:cargo-previous-error<ret>}  -docstring "Previous error" 
+map global cargo f %{:format<ret>}                -docstring "Format" 
+map global cargo b %{:b *cargo*<ret>}             -docstring "Open *cargo* buffer"
 
 # https://github.com/krornus/kakoune-cargo
 #######################
@@ -95,7 +103,7 @@ hook global WinSetOption filetype=cargo %{
 define-command -hidden cargo-open-error -params 4 %{
     evaluate-commands -try-client %opt{jumpclient} %{
         try %{
-            edit -existing ".%arg{1}" "%arg{2}" "%arg{3}"
+            edit -existing "%arg{1}" "%arg{2}" "%arg{3}"
         } catch %{
             edit -existing "%opt{cargo_workspace_root}/%arg{1}" "%arg{2}" "%arg{3}"
         }

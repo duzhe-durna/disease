@@ -18,7 +18,7 @@ hook global WinSetOption filetype=rust %<
     hook window InsertChar \{ -group rust-indent c-family-indent-on-opening-curly-brace
     hook window InsertChar [)}\]] -group rust-indent rust-indent-on-closing
 
-    set buffer formatcmd 'rustfmt'
+    set buffer formatcmd 'rustfmt --edition 2024'
 
     hook -once -always window WinSetOption filetype=.* %{ remove-hooks window rust-.+ }
 >

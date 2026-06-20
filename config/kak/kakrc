@@ -25,28 +25,10 @@ require-module matching
     map global normal <a-'> :surround-selection-on-key<ret>
 
 require-module splits
-    declare-user-mode window-mode
     map global normal <c-w> ":enter-user-mode window-mode<ret>"
 
-    map global window-mode V ':terminal-horizontal nu<ret>'  -docstring 'Open terminal in a horizontal split'
-    map global window-mode S ':terminal-vertical nu<ret>'    -docstring 'Open terminal in a vertical split'
-    map global window-mode T ':terminal-tab nu<ret>'         -docstring 'Open terminal in a tab'
-
-    map global window-mode v ':buffer-split-horizontal<ret>' -docstring 'Open current buffer in a horizontal split'
-    map global window-mode s ':buffer-split-vertical<ret>'   -docstring 'Open current buffer in vertical split'
-    map global window-mode t ':buffer-split-tab<ret>'        -docstring 'Open current buffer in a tab'
-    map global window-mode q ":q<ret>"                       -docstring 'Quit current client'
-
 require-module cargo
-    declare-user-mode cargo
     map global user c %{:enter-user-mode cargo<ret>}  -docstring "Enter cargo mode" 
-
-    map global cargo r %{:cargo run<ret>}             -docstring "Run project" 
-    map global cargo c %{:cargo check<ret>}           -docstring "Check syntax" 
-    map global cargo n %{:cargo-next-error<ret>}      -docstring "Next error" 
-    map global cargo p %{:cargo-previous-error<ret>}  -docstring "Previous error" 
-    map global cargo f %{:format<ret>}                -docstring "Format" 
-    map global cargo b %{:b *cargo*<ret>}             -docstring "Open *cargo* buffer"
 
 add-highlighter global/ number-lines -relative -hlcursor -separator ' '
 add-highlighter global/ show-matching
@@ -60,11 +42,10 @@ set global autoinfo 'command|onkey'
 set global autoreload true
 
 require-module langmap
-set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
-{{context_info}} {{mode_info}} - %val{client}@[%val{session}] - AS:%opt{auto_save_enabled} - (%opt{current_langmap})'
-# - branch:(%sh{git branch --show-current 2> /dev/null})'
+    set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
+    {{context_info}} {{mode_info}} - %val{client}@[%val{session}] - (%opt{current_langmap})'
 
-map global insert <c-w> %{<a-;>b<a-;>"_d}
+map global insert <c-w> %{<a-;>b<a-;><a-d>}
 map global insert <c-h> <backspace>
 map global insert <c-b> <left>
 map global insert <c-f> <right>
@@ -135,27 +116,17 @@ evaluate-commands %sh{
 }
 
 # Cursor color change on entering insert mode 
-hook global -group insert-color ModeChange push:.*:insert %{
+hook global -group insert-color ModeChange .*:.*:insert %{
     set-face buffer PrimaryCursor InsertCursor
     set-face buffer PrimaryCursorEol InsertCursor
 }
-hook global -group insert-color ModeChange .*:insert:normal %{ try %{
-    unset-face buffer PrimaryCursor
+hook global -group insert-color ModeChange .*:insert:.* %{ try %{
+    unset-face buffer PrimaryCursor 
     unset-face buffer PrimaryCursorEol
 } }
 
-# Auto-save
-def -hidden write-buffer-if-modified %{ eval -draft %sh{ [ $kak_modified = true ] && printf %s "write" }  }
-decl bool auto_save_enabled true
-hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{ rmhooks buffer auto-save }
-hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
-    hook -group auto-save buffer ModeChange .*:insert:.* write-buffer-if-modified
-    hook -group auto-save buffer NormalKey (q|d|<a-d>|c|<a-c>|r|R|p|P|u|U|<lt>|<a-lt>|<gt>|<a-gt>|!|:|\|`|~) write-buffer-if-modified
-}
-
 # Per filetype settings
 hook global BufOpenFile .*\.wgsl %{ set buffer filetype rust }
-hook global BufSetOption filetype=git.* %{ set buffer auto_save_enabled false }
 hook global WinSetOption filetype=(yaml|json|markdown) %{
     rmhooks window markdown-trim-indent 
     set buffer tabstop 2
@@ -177,9 +148,8 @@ def ls -file-completion %{eval %sh{ printf %s "info -title '$PWD' '$(ls -Alh)'" 
 def lang -params 1 %{ set-option buffer filetype %arg{1} }
 
 def eval-selected-all-sessions %{ eval %sh{
-     cmd="$kak_selection"
      for s in $(kak -l); do
-        echo "$cmd" | kak -p "$s"
+        echo "$kak_selection" | kak -p "$s"
      done
 } }
 
@@ -187,9 +157,15 @@ def find-edit-file -docstring %{
     find-edit-file <path>: list all files in the <path>
 } -params 1 %{
     prompt -menu  -shell-script-candidates %exp{
-        find '%arg[1]' -type f \
+        find -L '%arg[1]' -type f \
             -not -path '*/node_modules/*' \
             -not -path '*/target/*' \
             -not -path '*/.git/*'
     }  'edit ' %{ edit -existing %val{text}  }
-} 
+}
+
+# decl -hidden str auto_save_worker_id 
+# def auto-save-enable %{ nop %sh{ {
+
+# } </dev/null >/dev/null 2>&1 & } }
+

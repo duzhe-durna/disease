@@ -1,7 +1,0 @@
-#!/usr/bin/env nu
-
-$env.config.table.mode = 'compact'
-
-def main [command: string]: nothing -> nothing {
-    kak -l | lines | each { |session|  $command | kak -p $session; $session } 
-}

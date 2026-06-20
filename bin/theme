@@ -1,40 +1,40 @@
-#!/usr/bin/env nu
+#!/usr/bin/env sh
 
-def main []: nothing -> nothing {
-    if not (pgrep wmenu | is-empty) { return }
+set -ex
 
-    # TODO: "rose-pine" "gruv-light" "kanagawa" "lotus"
-    let themes = [ "rose-pine-moon" "rose-pine-dawn" ]
-    let selected = $themes
-        | str join (char newline)
-        | menu
+pgrep wmenu >/dev/null && exit
 
-    if not ($selected in $themes) { return }
+# # TODO: "rose-pine" "gruv-light" "kanagawa" "lotus"
+selected=$(printf "%s\n" \
+    'rose-pine-moon' \
+    'rose-pine-dawn' \
+    | menu)
 
-    # sway
-    let sway_path = $"($env.HOME)/.config/sway"
-    $"include '($selected)'" | save -f $"($sway_path)/theme"
-    swaymsg ( open $"($sway_path)/($selected)" )
+[ -z "$selected" ] && exit
+# if not ($selected in $themes) { return }
 
-    # kak
-    $"colorscheme ($selected)" | save -f $"($env.HOME)/.config/kak/theme"
-    kakeval $"colorscheme ($selected)"
+# sway
+sway_path="$HOME/.config/sway"
+printf "include '$selected'" > "$sway_path/theme"
+swaymsg $(cat "$sway_path/$selected")
 
-    # alacritty
-    $"general.import = ['./($selected).toml']" | save -f $"($env.HOME)/.config/alacritty/theme"
+# kak
+kak_cmd="colorscheme $selected"
+printf "$kak_cmd" > "$HOME/.config/kak/theme"
+for session in $(kak -l); do
+    printf "$kak_cmd" | kak -p "$session"
+done
 
-    # waybar
-    $"@import \"($selected)\";" | save -f $"($env.HOME)/.config/waybar/theme"
+# alacritty
+printf %s "general.import = ['./$selected.toml']" > "$HOME/.config/alacritty/theme"
 
-    # wmenu
-    let wmenu_opts = (open $"($env.HOME)/.config/wmenu/($selected)" | str trim)
-    let bin_dir = '' | path join $env.HOME .local bin
-    [ [menu wmenu] [menu_run wmenu-run] ]
-    | each {
-        let bin_name = $in.0
-        let original_wmenu = $in.1
-        $"#!/usr/bin/env sh\n($original_wmenu) ($wmenu_opts) $@"
-        | save -f ('' | path join $bin_dir $bin_name)
-    }
-    | ignore
+# waybar
+printf %s "@import \"$selected\";" > "$HOME/.config/waybar/theme"
+
+# wmenu
+wmenu_opts=$(cat "$HOME/.config/wmenu/$selected" | xargs)
+update_menu() {
+    printf '%s\n' '#!/usr/bin/env sh' "$1 $wmenu_opts \$@" > "$HOME/.local/bin/$2"
 }
+update_menu 'wmenu' 'menu'
+update_menu 'wmenu-run' 'menu-run'

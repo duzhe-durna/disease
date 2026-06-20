@@ -5,7 +5,7 @@ package.edition = "2024"
 ---
 
 use std::{
-    fs::{read_dir, ReadDir},
+    fs::{ReadDir, read_dir},
     io,
     path::PathBuf,
     process::Command,
@@ -31,11 +31,10 @@ fn main() {
     .fold(State::Ok(vec![]), State::with_links_res);
 
     match state {
-        State::Ok(links) => {
-            for link in links {
-                eprintln!("{:#?}", link.exec());
-            }
-        }
+        State::Ok(links) => links.into_iter().for_each(|link| match link.exec() {
+            Ok(link) => println!("{link:#?}"),
+            Err(err) => eprintln!("{err:#?}"),
+        }),
         State::Failed(errors) => eprintln!("{errors:#?}"),
     }
 }
@@ -200,4 +199,3 @@ fn combine_path(dir: PathBuf, parts: impl IntoIterator<Item = &'static str>) -> 
         dir
     })
 }
-

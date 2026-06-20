@@ -1,43 +1,40 @@
-#!/usr/bin/env nu
+#!/usr/bin/env sh
+set -e
 
-def main []: nothing -> nothing {
-    if not (pgrep wmenu | is-empty) { return }
+pgrep wmenu >/dev/null && exit
 
-    # TODO: allow selecting files
-    let target = [
-        "Babies/"
-        "Downloads/"
-        ".config/"
-        ".local/bin/"
-        "Apps/"
-    ]
-    | each { [ $env.HOME $in ] | path join }
-    | each { ls -al $in }
-    | flatten
-    | each { |entry| $entry.target? | default $entry.name }
-    | str join (char newline)
-    | menu -l 10
+target=$( printf "$HOME/%s\n" \
+     "Babies/"      \
+     "Downloads/"   \
+     ".config/"     \
+     ".local/bin/"  \
+     "Apps/"        \
+     | xargs -I PATH find -L PATH -maxdepth 1 | menu -l 10)
 
-    if ($target | is-empty) or not ($target | path exists) { 
-        return (error make $'Invalid path: ($target)') 
-    }
+if [ -z "$target" ]; then
+    exit
+elif [ -d "$target" ]; then
+    edit_file=
+    target="${target%/}"
+    dir="$target"
+    head="${target##*/}"
+    parent="${target%/*}"
+    tail="${parent##*/}"
+elif [ -f "$target" ]; then
+    edit_file="edit %{$target}"
+    dir="${target%/*}"
+    head="${target##*/}"
+    tail="${dir##*/}"
+else
+    echo "Invalid target: $target"
+    exit
+fi
 
-    let dir = if ($target | path type) == dir { $target } else { $target | path dirname }
-    cd $dir
+cd "$dir"
 
-    if $env.EDITOR != 'kak' {
-        $env.EDITOR
-        return
-    }
+if [ "$EDITOR" != 'kak' ]; then
+    exit
+fi
 
-    let session_name = $target
-        | path parse
-        | $"($in.parent | path basename)_($in.stem)"
-        | str replace -ar [\s\.]+ _
-        | str trim --char _
-
-    let args = [ -C $session_name -e "daemonize-session; try %{cd src ; edit main.rs}" ]
-        | if ($target | path type) != dir { $in | append $target } else { $in }
-
-    kak ...$args
-}
+session_name=$(printf %s "${tail}-${head}" | tr ' ' '-' | tr -d '.')
+kak -C $session_name -e "daemonize-session; try %{cd src; edit main.rs} catch %{$edit_file}"

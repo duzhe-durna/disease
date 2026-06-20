@@ -16,24 +16,36 @@ def terminal-tab -params ..1 %{
     terminal-window %arg[@]
 }
 
+decl -hidden str buf_split_cmd %{
+    kak -c '%val{session}' -e "buffer '%val{bufname}' ; select %val{selection_desc} ; exec vv"
+}
+
 decl -hidden str buf_split_cmd
 def -hidden update-buf-slit-cmd %{ set global buf_split_cmd %exp{
-    kak -c '%val{session}' -e "buffer '%val{bufname}' ; select %val{selection_desc} ; exec vv"
+     kak -c '%val{session}' -e "buffer '%val{bufname}' ; select %val{selection_desc} ; exec vv"
 } }
-
+ 
 def buffer-split-vertical %{
     update-buf-slit-cmd
     terminal-vertical %opt{buf_split_cmd}
 }
-
 def buffer-split-horizontal %{
     update-buf-slit-cmd
     terminal-horizontal %opt{buf_split_cmd}
 }
-
 def buffer-split-tab %{
     update-buf-slit-cmd
     terminal-tab %opt{buf_split_cmd}
 }
+
+declare-user-mode window-mode
+    map global window-mode V ':terminal-horizontal<ret>'  -docstring 'Open terminal in a horizontal split'
+    map global window-mode S ':terminal-vertical<ret>'    -docstring 'Open terminal in a vertical split'
+    map global window-mode T ':terminal-tab<ret>'         -docstring 'Open terminal in a tab'
+
+    map global window-mode v ':buffer-split-horizontal<ret>' -docstring 'Open current buffer in a horizontal split'
+    map global window-mode s ':buffer-split-vertical<ret>'   -docstring 'Open current buffer in vertical split'
+    map global window-mode t ':buffer-split-tab<ret>'        -docstring 'Open current buffer in a tab'
+    map global window-mode q ":q<ret>"                       -docstring 'Quit current client'
 
 }

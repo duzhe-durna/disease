@@ -16,7 +16,7 @@ selected=$(printf "%s\n" \
 # sway
 sway_path="$HOME/.config/sway"
 printf "include '$selected'" > "$sway_path/theme"
-swaymsg $(cat "$sway_path/$selected")
+swaymsg "$(cat "$sway_path/$selected")"
 
 # kak
 kak_cmd="colorscheme $selected"

@@ -45,7 +45,7 @@ require-module langmap
     set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
     {{context_info}} {{mode_info}} - %val{client}@[%val{session}] - (%opt{current_langmap})'
 
-map global insert <c-w> %{<a-;>b<a-;><a-d>}
+map global insert <c-w> %{<esc>hB<a-c>}
 map global insert <c-h> <backspace>
 map global insert <c-b> <left>
 map global insert <c-f> <right>
@@ -69,10 +69,10 @@ map global normal <a-/> <c-s><a-/>
 map global normal <a-?> <c-s><a-?>
 map global normal * <c-s>*
 # move selection (will never use for sure, but looks cool)
-map global normal <c-a-k> %{:eval -save-regs dquote %{exec dkP}<ret>}
-map global normal <c-a-j> %{:eval -save-regs dquote %{exec djP}<ret>}
-map global normal <c-a-h> %{:eval -save-regs dquote %{exec dhP}<ret>}
-map global normal <c-a-l> %{:eval -save-regs dquote %{exec dlP}<ret>}
+map global normal <c-a-k> %{:eval -save-regs \" %{exec dkP}<ret>}
+map global normal <c-a-j> %{:eval -save-regs \" %{exec djP}<ret>}
+map global normal <c-a-h> %{:eval -save-regs \" %{exec dhP}<ret>}
+map global normal <c-a-l> %{:eval -save-regs \" %{exec dlP}<ret>}
 
 map global goto N <esc>:bn<ret>                  -docstring 'Goto next buffer'
 map global goto P <esc>:bp<ret>                  -docstring 'Goto previous buffer'
@@ -164,8 +164,10 @@ def find-edit-file -docstring %{
     }  'edit ' %{ edit -existing %val{text}  }
 }
 
-# decl -hidden str auto_save_worker_id 
-# def auto-save-enable %{ nop %sh{ {
-
-# } </dev/null >/dev/null 2>&1 & } }
-
+decl bool auto_save_enabled true
+def -hidden write-buffer-if-modified %{ eval -draft %sh{ [ $kak_modified = true ] && printf %s "write" }  }
+hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{ rmhooks buffer auto-save }
+hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
+    hook -group auto-save buffer ModeChange .*:insert:.* write-buffer-if-modified
+    hook -group auto-save buffer NormalKey (q|d|<a-d>|c|<a-c>|r|R|p|P|u|U|<lt>|<a-lt>|<gt>|<a-gt>|!|:|\|`|~) write-buffer-if-modified
+}

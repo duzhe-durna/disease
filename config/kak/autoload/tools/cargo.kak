@@ -7,6 +7,7 @@ map global cargo n %{:cargo-next-error<ret>}      -docstring "Next error"
 map global cargo p %{:cargo-previous-error<ret>}  -docstring "Previous error" 
 map global cargo f %{:format<ret>}                -docstring "Format" 
 map global cargo b %{:b *cargo*<ret>}             -docstring "Open *cargo* buffer"
+map global cargo t %{:cargo test<ret>}            -docstring "Run tests"
 
 # https://github.com/krornus/kakoune-cargo
 #######################

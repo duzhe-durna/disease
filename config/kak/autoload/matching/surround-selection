@@ -1,3 +1,7 @@
+---
+package.edition = "2024"
+---
+
 pub fn main() {
     let Some(key) = std::env::args().skip(1).next() else {
         println!("fail Have no input key");
@@ -14,5 +18,6 @@ pub fn main() {
         _ => return,
     };
 
-    println!(r#"exec -draft -itersel %[Zi{open}<esc>za{close}<esc>z]"#);
+    println!(r#"exec -draft %[Zi{open}<esc>za{close}<esc>z]"#);
 }
+

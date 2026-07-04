@@ -22,7 +22,10 @@ require-module clipboard
     map global user b :find-edit-buffer<ret>         -docstring 'Serch for the active buffers'
 
 require-module matching
-    map global normal <a-'> :surround-selection-on-key<ret>
+    map global normal <a-'>  :surround-selection-on-key<ret>
+    map global normal <a-">  :surround-replace-selection-on-key<ret>
+    map global normal <a-V>  :remove-matching-backward<ret>
+    map global normal <a-v>  :remove-matching-forward<ret>
 
 require-module splits
     map global normal <c-w> ":enter-user-mode window-mode<ret>"
@@ -92,9 +95,6 @@ map global normal <c-7> %{:switch-langmap ru<ret>}
 
 map global normal <c-l> :ls<ret>
 
-map global normal <a-V> :remove-matching-backward<ret>
-map global normal <a-v> :remove-matching-forward<ret>
-
 map global normal <a-r> :swap-selections<ret>
 
 map global user  :      :eval-selected-all-sessions<ret> 
@@ -142,8 +142,6 @@ compl -menu kill-session shell-script-candidates %{kak -l}
 def cdhere %{ cd %sh{ echo $(dirname "$kak_buffile") } }
 def eval-selected %{ eval %val{selection} }
 def swap-selections %{ try %{ exec '<a-z>a<a-)>' } }
-def remove-matching-forward %{exec -save-regs '^"' 'mm;Zm;dzd'}
-def remove-matching-backward %{exec -save-regs '^"' '<a-m><a-m>;Zm;dzd'}
 def find-edit-buffer %{prompt -menu -buffer-completion 'Buffer: ' %{buffer %val{text}}}
 def ls -file-completion %{eval %sh{ printf %s "info -title '$PWD' '$(ls -Alh)'" }}
 def lang -params 1 %{ set-option buffer filetype %arg{1} }

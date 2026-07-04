@@ -126,6 +126,7 @@ hook global -group insert-color ModeChange .*:insert:.* %{ try %{
 } }
 
 # Per filetype settings
+hook -group auto-auto-save-enable global BufOpenFile .* auto-save-enable
 hook global BufOpenFile .*\.wgsl %{ set buffer filetype rust }
 hook global WinSetOption filetype=(yaml|json|markdown) %{
     rmhooks window markdown-trim-indent 
@@ -164,10 +165,9 @@ def find-edit-file -docstring %{
     }  'edit ' %{ edit -existing %val{text}  }
 }
 
-decl bool auto_save_enabled true
-def -hidden write-buffer-if-modified %{ eval -draft %sh{ [ $kak_modified = true ] && printf %s "write" }  }
-hook global -group auto-save-manager BufSetOption auto_save_enabled=false %{ rmhooks buffer auto-save }
-hook global -group auto-save-manager BufSetOption auto_save_enabled=true %{
-    hook -group auto-save buffer ModeChange .*:insert:.* write-buffer-if-modified
+def -hidden write-buffer-if-modified %( eval -draft %sh( [ $kak_modified = true ] && printf %s "write" )  )
+def auto-save-enable %(
+    hook -group auto-save buffer ModeChange .* write-buffer-if-modified
     hook -group auto-save buffer NormalKey (q|d|<a-d>|c|<a-c>|r|R|p|P|u|U|<lt>|<a-lt>|<gt>|<a-gt>|!|:|\|`|~) write-buffer-if-modified
-}
+)
+def auto-save-disable %(rmhooks buffer auto-save)

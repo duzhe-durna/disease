@@ -22,8 +22,8 @@ require-module clipboard
     map global user b :find-edit-buffer<ret>         -docstring 'Serch for the active buffers'
 
 require-module matching
-    map global normal <a-'>  :surround-selection-on-key<ret>
-    map global normal <a-">  :surround-replace-selection-on-key<ret>
+    map global normal <a-'>  :surround-selection<ret>
+    map global normal <a-">  :delete-surrounding<ret>
     map global normal <a-V>  :remove-matching-backward<ret>
     map global normal <a-v>  :remove-matching-forward<ret>
 

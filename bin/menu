@@ -2,11 +2,13 @@
 
 theme=
 theme_path="$HOME/.config/wmenu/theme"
+run=wmenu
+
 if [ -f "$theme_path" ]; then
     theme=$(cat "$theme_path")
 fi
 
-run=wmenu
+
 if [ "$1" = "run" ]; then
     shift
     run=wmenu-run

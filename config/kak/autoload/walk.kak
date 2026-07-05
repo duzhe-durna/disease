@@ -52,8 +52,10 @@ def walk-sh -params 1.. -shell-script-candidates %(ls -A "$kak_opt_walkdir") -do
 
 def walk-or-edit -hidden %( eval -save-regs pl %(
     eval %sh([ "$kak_bufname" != "*walk*" ] && printf "fail not in the *walk* buffer")
-    walk-select-entry
-    walk "%opt(walkdir)/%reg(1)"
+    try %(
+        walk-select-entry
+        walk "%opt(walkdir)/%reg(1)"
+    )
 ) )
 
 def walk-copy-path %(

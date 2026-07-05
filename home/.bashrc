@@ -47,6 +47,7 @@ alias ..='cd ..'
 alias ...='cd ../..'
 
 kman() { kak -e "man $1"; }
+walk() { kak -e "walk %($1)"; }
 
 alias k='kak'
 alias up='sudo dnf update -y; rustup update'

@@ -1,18 +1,25 @@
 decl -hidden str walkdir %sh(echo $PWD)
 decl -hidden str walkdir_directory_regex "^d\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^\n]+)"
 decl -hidden str walkdir_non_directory_regex "^[^d|^total]\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^\n]+)"
-decl -hidden str walkdir_link_regex "^l\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+[^>]+-> ([^\n]+)"
-decl -hidden str walkdir_link_regex_hglt "^l\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^\n]+)" 
+decl -hidden str walkdir_link_regex "^l\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(.+) -> [^\n]+"
 decl -hidden str walkdir_exe_regex "^-\S+x\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^\n]+)"
+decl -hidden str walkdir_link_regex_hglt "^l\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^\n]+)" 
 
-def walk -override -file-completion -params ..1 -docstring %(
+def walk -file-completion -params ..1 -docstring %(
     walk [path]: Open the file browser buffer in the provided directory or edit the provided file.
 ) %( eval -save-regs \"p %(
     try  %(edit -existing %arg(1)) catch %(
-        # expand path
-        reg p %sh(eval echo "$1")
+        reg p %sh(
+            if [ -z "$1" ]; then
+                printf %s "$PWD"
+            else
+                expanded=$(eval echo "$1")
+                printf %s "$expanded"
+            fi
+        )
 
         eval %sh([ ! -d "$kak_reg_p" ] && printf %s "fail %(neither a dir nor a file: $1)")
+
         try %(delete-buffer *walk*)
         edit -scratch *walk*
 
@@ -34,7 +41,7 @@ def walk-cdhere -docstring 'Set PWD to the current *walk* file browser directory
     )
 )
 
-def -override walk-sh -params 1.. -shell-script-candidates %(ls -A "$kak_opt_walkdir") -docstring %(
+def walk-sh -params 1.. -shell-script-candidates %(ls -A "$kak_opt_walkdir") -docstring %(
     walk-sh <shell-command>: run shell command in the ctx of the current *walk* buffer
 ) %( eval -save-regs oc %(
     reg o %sh(cd "$kak_opt_walkdir" && $@)
@@ -43,21 +50,27 @@ def -override walk-sh -params 1.. -shell-script-candidates %(ls -A "$kak_opt_wal
     info %reg(o)
 ))
 
-def walk-or-edit -override -hidden %( eval -save-regs pl %(
-    try %(buffer *walk*) catch %(fail *walk* buffer is closed)
+def walk-or-edit -hidden %( eval -save-regs pl %(
+    eval %sh([ "$kak_bufname" != "*walk*" ] && printf "fail not in the *walk* buffer")
+    walk-select-entry
+    walk "%opt(walkdir)/%reg(1)"
+) )
+
+def walk-copy-path %(
+    walk-select-entry
+    reg dquote "%opt(walkdir)/%reg(1)"
+)
+
+# entry saved into %reg(1) by the regex capture group
+def -hidden walk-select-entry %(
     try %(
         exec "xs%opt(walkdir_link_regex)<ret>"
-        walk "%reg(1)"
     ) catch %(
-        # echo -debug "WALK ERR: %val{error}"
         exec "xs%opt(walkdir_non_directory_regex)<ret>"
-        walk "%opt(walkdir)/%reg(1)"
     ) catch %(
-        # echo -debug "WALK ERR: %val{error}"
         exec "xs%opt(walkdir_directory_regex)<ret>"
-        walk "%opt(walkdir)/%reg(1)"
     )
-) )
+)
 
 
 hook -group walk-hooks global WinSetOption filetype=walk %(

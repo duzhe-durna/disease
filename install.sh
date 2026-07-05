@@ -12,14 +12,8 @@ main() {
     ./spread.rs
 }
 
-install_if_not_installed() {
-    if ! command -v "$1" 2>&1; then
-        "$2"
-    fi
-}
-
 install_rust() {
-    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 }
 
 install_kakoune() {
@@ -32,7 +26,13 @@ install_kakoune() {
 }
 
 install_wm() {
-    sudo dnf install sway waybar alacritty
+    sudo dnf install sway waybar alacritty feh
+}
+
+install_if_not_installed() {
+    if ! command -v "$1" 2>&1; then
+        "$2"
+    fi
 }
 
 whatever() {

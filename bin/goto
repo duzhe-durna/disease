@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-pgrep wmenu >/dev/null && exit
+pgrep menu >/dev/null && exit
 
 target=$( printf "$HOME/%s\n" \
      "Babies/"      \

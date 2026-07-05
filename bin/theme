@@ -2,16 +2,18 @@
 
 set -ex
 
-pgrep wmenu >/dev/null && exit
+pgrep menu >/dev/null && exit
 
 # # TODO: "rose-pine" "gruv-light" "kanagawa" "lotus"
-selected=$(printf "%s\n" \
-    'rose-pine-moon' \
-    'rose-pine-dawn' \
-    | menu)
+themes='rose-pine-moon
+rose-pine-dawn'
 
-[ -z "$selected" ] && exit
-# if not ($selected in $themes) { return }
+selected=$(printf %s "$themes" | menu)
+
+if [ -z "$selected" ] || ! printf %s "$themes" | grep -Fq -- "$selected" ; then
+    echo aboba
+    exit
+fi
 
 # sway
 sway_path="$HOME/.config/sway"
@@ -32,9 +34,5 @@ printf %s "general.import = ['./$selected.toml']" > "$HOME/.config/alacritty/the
 printf %s "@import \"$selected\";" > "$HOME/.config/waybar/theme"
 
 # wmenu
-wmenu_opts=$(cat "$HOME/.config/wmenu/$selected" | xargs)
-update_menu() {
-    printf '%s\n' '#!/usr/bin/env sh' "$1 $wmenu_opts \$@" > "$HOME/.local/bin/$2"
-}
-update_menu 'wmenu' 'menu'
-update_menu 'wmenu-run' 'menu-run'
+wmenu_path="$HOME/.config/wmenu"
+cat "$wmenu_path/$selected" > "$wmenu_path/theme"

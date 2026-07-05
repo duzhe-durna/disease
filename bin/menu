@@ -1,2 +1,15 @@
 #!/usr/bin/env sh
-wmenu -i -N 2a273f -n 908caa -S 2a273f -s e0def4 $@
+
+theme=
+theme_path="$HOME/.config/wmenu/theme"
+if [ -f "$theme_path" ]; then
+    theme=$(cat "$theme_path")
+fi
+
+run=wmenu
+if [ "$1" = "run" ]; then
+    shift
+    run=wmenu-run
+fi
+
+$run -i $theme $@

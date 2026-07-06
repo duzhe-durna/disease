@@ -12,7 +12,7 @@ if ! [[ "$PATH" =~ "$custom_path" ]]; then
 fi
 
 export PATH
-export KAKOUNE_RUNTIME=$HOME/.config/kak
+# export KAKOUNE_RUNTIME=$HOME/.config/kak
 export KAKOUNE_POSIX_SHELL=/usr/bin/dash
 export EDITOR=kak
 export VISUAL=$EDITOR

@@ -1,11 +1,22 @@
+#!/usr/bin/env -S cargo -Zscript
+
 ---
 package.edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
 ---
 
-use std::env;
-use std::io::Write;
+use clap::Parser;
+use std::io::{BufWriter, Write};
 
-const LANG_MAP_CHARS: &[[char; 3]] = &[
+enum_LangMap! {
+    En,
+    Ru,
+    Ua
+}
+
+const LANG_MAP_CHARS: &[[char; LangMap::COUNT]] = &[
     ['?', ',', ','],
     ['/', '.', '.'],
     ['>', 'Ю', 'Ю'],
@@ -101,59 +112,14 @@ const LANG_MAP_CHARS: &[[char; 3]] = &[
     ['`', 'ё', '\''],
 ];
 
-macro_rules! enum_LangMap {
-    ($($variant:ident),*) => {
-        #[derive(Copy, Clone, Eq, PartialEq)]
-        enum LangMap {
-            $($variant,)*
-        }
-
-        impl LangMap {
-            const VARIANTS: &[Self] = &[ $(Self::$variant,)* ];
-        }
-    }
+#[derive(Parser)]
+enum Cmd {
+    Init,
+    Switch { current: LangMap, next: LangMap },
 }
 
-enum_LangMap! {
-    En,
-    Ru,
-    Ua
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-struct Failed {
-    command: Vec<String>,
-    error: Error,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    MissingCurrentLangmapArg1,
-    MissingNextLangmapArg2,
-    NotACorrectLangMap(String),
-}
-
-fn main() {
-    match run() {
-        Ok(_) => (),
-        Err(err) => eprintln!("{err:?}"),
-    }
-}
-
-fn run() -> Result<(), Failed> {
-    let mut args = std::env::args().skip(1);
-    let mut out = std::io::stdout();
-
-    let current = args
-        .next()
-        .ok_or_else(fail(Error::MissingCurrentLangmapArg1))
-        .and_then(LangMap::try_from)?;
-
-    let next = args
-        .next()
-        .ok_or_else(fail(Error::MissingNextLangmapArg2))
-        .and_then(LangMap::try_from)?;
+fn switch(current: LangMap, next: LangMap) {
+    let mut out = BufWriter::new(std::io::stdout());
 
     let (action, next_str) = match (&current, &next) {
         (current, next) if current == next => ("unmap", LangMap::En.as_str()),
@@ -171,12 +137,29 @@ fn run() -> Result<(), Failed> {
     }
 
     let _ = writeln!(out, "set-option global current_langmap {next_str}");
+}
 
-    Ok(())
+fn kak_init() {
+    let exe_path = std::env::current_exe().expect("current exe path");
+    println!(
+        r#"provide-module langmap %(
+            decl -hidden str current_langmap 'en'
+            def switch-langmap -params 1 -docstring %(
+                switch-langmap <next langmap>
+                Available langmaps: {available:?}
+            ) %(eval %sh("{this_exe}" switch "$kak_opt_current_langmap" "$1"))
+        )"#,
+        available = langmap_list(),
+        this_exe = exe_path.display(),
+    )
+}
+
+fn langmap_list() -> [&'static str; LangMap::COUNT] {
+    std::array::from_fn(|i| LangMap::VARIANTS[i].as_str())
 }
 
 impl LangMap {
-    const fn as_str(&self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             LangMap::En => "en",
             LangMap::Ru => "ru",
@@ -185,20 +168,39 @@ impl LangMap {
     }
 }
 
-impl TryFrom<String> for LangMap {
-    type Error = Failed;
-    fn try_from(it: String) -> Result<Self, Self::Error> {
+impl std::str::FromStr for LangMap {
+    type Err = String;
+    fn from_str(it: &str) -> Result<Self, Self::Err> {
         Self::VARIANTS
             .iter()
-            .find(|langmap| langmap.as_str() == it.as_str())
+            .find(|langmap| langmap.as_str() == it)
             .copied()
-            .ok_or_else(fail(Error::NotACorrectLangMap(it)))
+            .ok_or_else(|| format!("'{it}' if undefined langmap"))
     }
 }
 
-fn fail(error: Error) -> impl FnOnce() -> Failed {
-    move || Failed {
-        command: env::args().skip(1).collect(),
-        error,
+#[macro_export]
+macro_rules! enum_LangMap {
+    ($($variant:ident),*) => {
+        #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+        enum LangMap {
+            $($variant,)*
+        }
+
+        impl LangMap {
+            const VARIANTS: &[Self] = &[ $(Self::$variant,)* ];
+            const COUNT: usize = Self::VARIANTS.len();
+        }
+    }
+}
+
+fn main() {
+    match Cmd::try_parse() {
+        Ok(Cmd::Init) => kak_init(),
+        Ok(Cmd::Switch { current, next }) => switch(current, next),
+        Err(err) => {
+            println!("fail langmap command failed");
+            eprintln!("{err}");
+        }
     }
 }

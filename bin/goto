@@ -37,4 +37,4 @@ if [ "$EDITOR" != 'kak' ]; then
 fi
 
 session_name=$(printf %s "${tail}-${head}" | tr ' ' '-' | tr -d '.')
-kak -C $session_name -e "daemonize-session; try %{cd src; edit main.rs} catch %{$edit_file}"
+exec kak -C $session_name -e "daemonize-session; try %{cd src; edit main.rs} catch %{$edit_file}"

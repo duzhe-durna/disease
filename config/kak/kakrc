@@ -1,31 +1,17 @@
-eval %sh{
-    if [ -d "${kak_runtime}/autoload" ]; then
-        find -L "${kak_runtime}/autoload" -type f -name '*\.kak' \
-        | sed 's/.*/try %{ source "&" } catch %{ echo -debug Autoload: could not load "&" }/'
-    fi
-}
-
-def -params 1 -docstring "colorscheme <name>: enable named colorscheme" colorscheme %{source "%val{runtime}/colors/%arg{1}.kak"}
-compl -menu colorscheme shell-script-candidates %{
-    find -L "${kak_runtime}/colors" -type f -name '*\.kak' | while read -r filename; do
-        basename="${filename##*/}"
-        printf %s\\n "${basename%.*}"
-    done | sort -u
-}
-
 source "%val{config}/theme"
+eval %sh($kak_config/langmap init)
+
+require-module langmap
+    map global insert <c-6> %{<a-;>:switch-langmap ua<ret>}
+    map global insert <c-7> %{<a-;>:switch-langmap ru<ret>}
+    map global normal <c-6> %{:switch-langmap ua<ret>}
+    map global normal <c-7> %{:switch-langmap ru<ret>}
 
 require-module clipboard
     map global user p %{:paste-sys-clipboard p<ret>} -docstring 'Past from system clpboard'
     map global user P %{:paste-sys-clipboard P<ret>} -docstring 'Past from system clpboard'
     map global user y :copy-sys-clipboard<ret>       -docstring 'Yank into system Clipboard'
     map global user b :find-edit-buffer<ret>         -docstring 'Serch for the active buffers'
-
-require-module matching
-    map global normal <a-'>  :surround-selection<ret>
-    map global normal <a-">  :delete-surrounding<ret>
-    map global normal <a-V>  :remove-matching-backward<ret>
-    map global normal <a-v>  :remove-matching-forward<ret>
 
 require-module splits
     map global normal <c-w> ":enter-user-mode window-mode<ret>"
@@ -44,9 +30,8 @@ set global autocomplete prompt
 set global autoinfo 'command|onkey'
 set global autoreload true
 
-require-module langmap
-    set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
-    {{context_info}} {{mode_info}} - %val{client}@[%val{session}] - (%opt{current_langmap})'
+set global modelinefmt '%val{bufname} %val{cursor_line}:%val{cursor_char_column} 
+{{context_info}} {{mode_info}} - %val{client}@[%val{session}] - (%opt{current_langmap})'
 
 map global insert <c-w> %{<esc>hB<a-c>}
 map global insert <c-h> <backspace>
@@ -88,17 +73,17 @@ map global user T %{:find-edit-file "../test*"<ret>} -docstring 'Try to fuzzy se
 map global user f %{:find-edit-file .<ret>}          -docstring 'Fuzzy search for the files from current directory'
 map global user F %{:find-edit-file ../<ret>}        -docstring 'Fuzzy search for the files from parent directory'
 
-map global insert <c-6> %{<a-;>:switch-langmap ua<ret>}
-map global insert <c-7> %{<a-;>:switch-langmap ru<ret>}
-map global normal <c-6> %{:switch-langmap ua<ret>}
-map global normal <c-7> %{:switch-langmap ru<ret>}
-
 map global normal <c-l> :ls<ret>
 
 map global normal <a-r> :swap-selections<ret>
 
 map global user  :      :eval-selected-all-sessions<ret> 
 map global user ';'     :eval-selected<ret>
+
+map global normal <a-'>  :surround-selection<ret>
+map global normal <a-">  :delete-surrounding<ret>
+map global normal <a-V>  :remove-matching-backward<ret>
+map global normal <a-v>  :remove-matching-forward<ret>
 
 # alt + <anyaction> to escape insert mode
 evaluate-commands %sh{
@@ -169,3 +154,22 @@ def auto-save-enable %(
     hook -group auto-save buffer NormalKey (q|d|<a-d>|c|<a-c>|r|R|p|P|u|U|<lt>|<a-lt>|<gt>|<a-gt>|!|:|\|`|~) write-buffer-if-modified
 )
 def auto-save-disable %(rmhooks buffer auto-save)
+
+def remove-matching-forward %(exec -draft %(mm;Zm;dzd))
+def remove-matching-backward %(exec -draft %(<a-m><a-m>;Zm;dzd))
+def delete-surrounding %(on-key %(exec "<a-a>%val(key)i<del><esc>a<backspace><esc>"))
+def surround-selection %{on-key %{eval -draft %sh{
+        o=
+        c=
+        case "$kak_key" in
+        '<esc>'        ) exit               ;;
+        '(' | ')'      ) o='('   ; c=')'    ;;
+        '{' | '}'      ) o="{"   ; c="}"    ;;
+        '[' | ']'      ) o='['   ; c=']'    ;;
+        '<lt>' | '<gt>') o='<lt>'; c='<gt>' ;;
+                      *) o="$kak_key"  ; c="$kak_key"   ;;
+        esac
+        printf %s "exec 'i$o<esc>a$c'"
+}}}
+
+
